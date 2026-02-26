@@ -90,8 +90,13 @@ def room_create(request):
         if form.is_valid():
             room = form.save(commit=False)
             room.hotel = request.user.hotel
-            room.save()
-            return redirect("rooms_list")
+            try:
+                room.save()
+                messages.success(request, f"Room {room.number} created successfully.")
+                return redirect("rooms_list")
+            except IntegrityError:
+                messages.error(request, f"Room {room.number} already exists for this hotel. Please use a different room number.")
+                return render(request, "hotelportal/room_form.html", {"form": form, "mode": "create"})
     else:
         form = RoomForm()
     return render(request, "hotelportal/room_form.html", {"form": form, "mode": "create"})
