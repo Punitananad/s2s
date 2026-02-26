@@ -138,6 +138,7 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # 🔸 not in basic Django, but needed for Scan2Service
 # These lines define where uploaded files (like hotel logos) are stored
@@ -154,7 +155,7 @@ LOGOUT_REDIRECT_URL = "/login"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-SITE_URL = "http://142.93.216.76:8000"
+SITE_URL = "http://142.93.216.76"
 
 ASGI_APPLICATION = "scan2service.asgi.application"
 
