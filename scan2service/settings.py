@@ -32,9 +32,9 @@ SECRET_KEY = 'django-insecure-%wu662%*4(@+i6qx6d6i4o!e#psrl8m7(-+qqsmi4w-oela=x1
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["142.93.216.76", "localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ["142.93.216.76", "scan2service.in", "www.scan2service.in", "localhost", "127.0.0.1"]
 
-CSRF_TRUSTED_ORIGINS = ["http://142.93.216.76"]
+CSRF_TRUSTED_ORIGINS = ["http://142.93.216.76", "https://scan2service.in", "https://www.scan2service.in", "http://scan2service.in", "http://www.scan2service.in"]
 
 
 # Application definition
@@ -155,7 +155,7 @@ LOGOUT_REDIRECT_URL = "/login"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-SITE_URL = "http://142.93.216.76"
+SITE_URL = "https://scan2service.in"
 
 ASGI_APPLICATION = "scan2service.asgi.application"
 
