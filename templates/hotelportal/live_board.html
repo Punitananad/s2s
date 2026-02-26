@@ -1,0 +1,636 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Live Board{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h3 class="mb-1">Live Board</h3>
+    <div class="text-muted small">Auto-refreshing every <strong>8s</strong> (plus instant WebSocket updates)</div>
+  </div>
+  <div class="d-flex gap-3 align-items-center">
+    <span class="badge text-bg-success">Completed (today): <span id="countCompleted">{{ completed_today }}</span></span>
+    <span class="badge text-bg-secondary">Cancelled (today): <span id="countCancelled">{{ cancelled_today }}</span></span>
+    <a class="btn btn-outline-secondary btn-sm" href="{% url 'portal_requests_history' %}">View history</a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- ROOMS COLUMN -->
+  <div class="col-12 col-lg-4">
+    <!-- FREE -->
+    <div class="card mb-3">
+      <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <span>Free rooms</span>
+      </div>
+      <div class="card-body p-2" id="laneFree">
+        <div class="text-muted small">Loading…</div>
+      </div>
+    </div>
+    <!-- BUSY -->
+    <div class="card mb-3">
+      <div class="card-header bg-warning-subtle d-flex justify-content-between align-items-center">
+        <span>Busy rooms</span>
+      </div>
+      <div class="card-body p-2" id="laneBusy">
+        <div class="text-muted small">Loading…</div>
+      </div>
+    </div>
+    <!-- CLEANING -->
+    <div class="card mb-3">
+      <div class="card-header bg-info-subtle d-flex justify-content-between align-items-center">
+        <span>Cleaning</span>
+      </div>
+      <div class="card-body p-2" id="laneCleaning">
+        <div class="text-muted small">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REQUESTS COLUMN -->
+  <div class="col-12 col-lg-8">
+    <div class="row g-3">
+      <div class="col-12 col-md-6">
+        <div class="card h-100">
+          <div class="card-header bg-danger text-white">NEW requests</div>
+          <div class="card-body" id="laneNew"></div>
+        </div>
+      </div>
+      <div class="col-12 col-md-6">
+        <div class="card h-100">
+          <div class="card-header bg-warning">ACCEPTED requests</div>
+          <div class="card-body" id="laneAccepted"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Request Detail Modal (existing) -->
+<div class="modal fade" id="reqDetailModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Request details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="reqDetailBody">
+        <div class="text-muted">Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Check-in Modal for FREE rooms -->
+<div class="modal fade" id="checkinModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Check-in</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="ciRoomId">
+        <div class="mb-2">
+          <label class="form-label small">Guest name</label>
+          <input id="ciGuest" class="form-control form-control-sm" />
+        </div>
+        <div>
+          <label class="form-label small">Phone</label>
+          <input id="ciPhone" class="form-control form-control-sm" inputmode="numeric" />
+        </div>
+        <div class="invalid-feedback d-block small" id="ciErr" style="display:none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="ciSubmit" class="btn btn-primary btn-sm">Check in</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Audio for new requests -->
+<audio id="sndNew" preload="auto">
+  <source src="{% static 'audio/notify.mp3' %}" type="audio/mpeg">
+</audio>
+
+<!-- embed initial JSON -->
+<script id="init-new" type="application/json">{{ new_initial_json|safe }}</script>
+<script id="init-acc" type="application/json">{{ accepted_initial_json|safe }}</script>
+<script id="init-free" type="application/json">{{ free_rooms_json|safe }}</script>
+<script id="init-busy" type="application/json">{{ busy_rooms_json|safe }}</script>
+<script id="init-clean" type="application/json">{{ cleaning_rooms_json|safe }}</script>
+<!-- 13.1B — WhatsApp templates -->
+<script id="init-wa-templates" type="application/json">{{ wa_templates_json|safe }}</script>
+
+<script>
+(function(){
+  function readInit(id){
+    const el = document.getElementById(id);
+    try { return JSON.parse(el.textContent || "[]"); } catch(e){ return []; }
+  }
+
+  const laneNew = document.getElementById('laneNew');
+  const laneAccepted = document.getElementById('laneAccepted');
+  const laneFree = document.getElementById('laneFree');
+  const laneBusy = document.getElementById('laneBusy');
+  const laneCleaning = document.getElementById('laneCleaning');
+  const countCompleted = document.getElementById('countCompleted');
+  const countCancelled = document.getElementById('countCancelled');
+  const snd = document.getElementById('sndNew');
+
+  let seenNew = new Set();
+
+  // 13.1B — WhatsApp templates (shared for all cards)
+  const waTemplates = readInit('init-wa-templates');
+
+  // --- render helpers ---
+  function fmtTime(iso){
+    if(!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleString();
+  }
+  function moneyINR(x){
+    try { return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(x||0); }
+    catch(e){ return '₹ ' + (x || 0).toFixed(2); }
+  }
+
+  // Request card HTML (NEW / ACCEPTED)
+  function cardHTML(r){
+    const isFood = r.kind === "FOOD";
+    const lines = isFood && r.lines && r.lines.length
+      ? ('<ul class="small mb-2 ps-3">' + r.lines.map(l => `<li>${l.name} × ${l.qty}</li>`).join('') + '</ul>')
+      : (r.note ? `<div class="small text-muted mb-2">${r.note}</div>` : '');
+
+    const timeLine = r.status === "ACCEPTED"
+      ? `<div class="small text-muted">Created: ${fmtTime(r.created_at)} · Accepted: ${fmtTime(r.accepted_at)}</div>`
+      : `<div class="small text-muted">Created: ${fmtTime(r.created_at)}</div>`;
+
+    const badge = isFood ? `<span class="badge text-bg-primary">FOOD</span>`
+                         : `<span class="badge text-bg-info">SERVICE</span>`;
+    const total = isFood ? `<div class="fw-bold">${moneyINR(r.subtotal)}</div>` : '';
+
+    const actions = r.status === "NEW"
+      ? `<button class="btn btn-sm btn-primary me-2 act" data-id="${r.id}" data-a="accept">Accept</button>
+         <button class="btn btn-sm btn-outline-danger me-2 act" data-id="${r.id}" data-a="cancel">Cancel</button>`
+      : `<button class="btn btn-sm btn-success me-2 act" data-id="${r.id}" data-a="complete">Complete</button>
+         <button class="btn btn-sm btn-outline-danger me-2 act" data-id="${r.id}" data-a="cancel">Cancel</button>`;
+
+    // 13.1B — WhatsApp dropdown + button (always present; options depend on waTemplates)
+    const waList = Array.isArray(waTemplates) ? waTemplates : [];
+    const options = waList.map(t => `<option value="${t.id}">${t.label}</option>`).join('');
+    const waControls = `
+      <div class="mt-2 d-flex align-items-center">
+        <select class="form-select form-select-sm wa-template-select me-2"
+                data-request-id="${r.id}">
+          <option value="">WhatsApp template…</option>
+          ${options}
+        </select>
+        <button type="button"
+                class="btn btn-sm btn-success send-wa-btn"
+                data-request-id="${r.id}">
+          WhatsApp
+        </button>
+      </div>`;
+
+    return `<div class="border rounded p-2 mb-2" data-card="${r.id}">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="fw-semibold">Room ${r.room} ${badge}</div>
+          ${timeLine}
+          ${lines}
+        </div>
+        ${total}
+      </div>
+      <div class="mt-2">
+        <div class="d-flex mb-1">
+          <button class="btn btn-sm btn-outline-secondary me-2 view" data-id="${r.id}">View</button>
+          ${actions}
+        </div>
+        ${waControls}
+      </div>
+    </div>`;
+  }
+
+  function renderLane(el, list){
+    if (!list || !list.length){
+      el.innerHTML = '<div class="text-muted small">Nothing here.</div>';
+      return;
+    }
+    el.innerHTML = list.map(cardHTML).join('');
+  }
+
+  // Room cards
+    function roomCardHTML(r){
+    const guest = r.guest_name
+      ? `<div class="small text-muted">${r.guest_name} (${r.guest_phone || ''})</div>`
+      : '';
+    let btn = '';
+
+    if (r.status === "FREE") {
+      // Simple check-in button
+      btn = `<button class="btn btn-sm btn-primary ci-btn" data-room="${r.id}">Check-in</button>`;
+    }
+    else if (r.status === "BUSY") {
+      // 13.1C — BUSY room: show View, Checkout, and WhatsApp template controls
+      let waControls = "";
+      if (waTemplates && waTemplates.length) {
+        const options = waTemplates
+          .map(t => `<option value="${t.id}">${t.label}</option>`)
+          .join('');
+        waControls = `
+          <div class="mt-1 d-flex align-items-center">
+            <select class="form-select form-select-sm wa-template-select-room me-1"
+                    data-room-id="${r.id}">
+              <option value="">WhatsApp template…</option>
+              ${options}
+            </select>
+            <button type="button"
+                    class="btn btn-sm btn-success send-wa-room-btn"
+                    data-room-id="${r.id}">
+              WA
+            </button>
+          </div>`;
+      }
+
+      btn = `
+        <div class="d-flex flex-column align-items-end gap-1">
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary stay-view-btn" data-room="${r.id}">
+              View details
+            </button>
+            <button class="btn btn-sm btn-warning co-btn" data-room="${r.id}">
+              Check-out
+            </button>
+          </div>
+          ${waControls}
+        </div>`;
+    }
+    else if (r.status === "CLEANING") {
+      btn = `<button class="btn btn-sm btn-success ready-btn" data-room="${r.id}">Mark ready</button>`;
+    }
+
+    return `
+      <div class="border rounded p-2 mb-2">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="fw-semibold">Room ${r.number}</div>
+            ${guest}
+          </div>
+          ${btn}
+        </div>
+      </div>`;
+  }
+
+
+  function renderRoomLane(el, list){
+    if (!list || !list.length){
+      el.innerHTML = '<div class="text-muted small">No rooms.</div>';
+      return;
+    }
+    el.innerHTML = list.map(roomCardHTML).join('');
+  }
+
+  // --- Initial render using embedded JSON ---
+  const initNew = readInit('init-new');
+  const initAcc = readInit('init-acc');
+  const initFree = readInit('init-free');
+  const initBusy = readInit('init-busy');
+  const initClean = readInit('init-clean');
+
+  renderLane(laneNew, initNew);
+  renderLane(laneAccepted, initAcc);
+  renderRoomLane(laneFree, initFree);
+  renderRoomLane(laneBusy, initBusy);
+  renderRoomLane(laneCleaning, initClean);
+
+  // baseline for “already known” NEW requests
+  seenNew = new Set(initNew.map(r => r.id));
+
+  // --- Polling fallback ---
+  async function poll(){
+    try{
+      const res = await fetch("{% url 'live_poll' %}", { credentials: "same-origin" });
+      const data = await res.json();
+
+      const incomingIds = new Set(data.new.map(r => r.id));
+      let play = false;
+      for (const id of incomingIds){
+        if (!seenNew.has(id)){ play = true; break; }
+      }
+
+      renderLane(laneNew, data.new);
+      renderLane(laneAccepted, data.accepted);
+      countCompleted.textContent = data.counts.completed_today;
+      countCancelled.textContent = data.counts.cancelled_today;
+      seenNew = incomingIds;
+      if (play){
+        try{
+          snd.currentTime = 0;
+          const p = snd.play();
+          if (p && p.catch) p.catch(()=>{});
+        }catch(e){}
+      }
+
+      renderRoomLane(laneFree, data.rooms.free);
+      renderRoomLane(laneBusy, data.rooms.busy);
+      renderRoomLane(laneCleaning, data.rooms.cleaning);
+
+    }catch(e){
+      // ignore
+    }
+  }
+
+  // --- WebSocket primary updates ---
+  function setupSocket(){
+    const scheme = window.location.protocol === "https:" ? "wss" : "ws";
+    const wsUrl = scheme + "://" + window.location.host + "/ws/portal/live/";
+    const socket = new WebSocket(wsUrl);
+
+    socket.onopen = function(){
+      console.log("[WS] Connected OK:", wsUrl);
+    };
+
+    socket.onmessage = function(event){
+      let payload;
+      try { payload = JSON.parse(event.data); } catch(e){ return; }
+      if (!payload || payload.type !== "board_state") return;
+      const data = payload.data || {};
+
+      const newList = data.new || [];
+      const incomingIds = new Set(newList.map(r => r.id));
+      let play = false;
+      for (const id of incomingIds){
+        if (!seenNew.has(id)){ play = true; break; }
+      }
+
+      renderLane(laneNew, newList);
+      renderLane(laneAccepted, data.accepted || []);
+
+      if (data.counts){
+        if (typeof data.counts.completed_today !== "undefined") {
+          countCompleted.textContent = data.counts.completed_today;
+        }
+        if (typeof data.counts.cancelled_today !== "undefined") {
+          countCancelled.textContent = data.counts.cancelled_today;
+        }
+      }
+
+      if (data.rooms){
+        renderRoomLane(laneFree, data.rooms.free || []);
+        renderRoomLane(laneBusy, data.rooms.busy || []);
+        renderRoomLane(laneCleaning, data.rooms.cleaning || []);
+      }
+
+      seenNew = incomingIds;
+      if (play){
+        try{
+          snd.currentTime = 0;
+          const p = snd.play();
+          if (p && p.catch) p.catch(()=>{});
+        }catch(e){}
+      }
+    };
+
+    socket.onclose = function(evt){
+      console.log("[WS] Closed:", evt);
+    };
+
+    socket.onerror = function(evt){
+      console.log("[WS] Error:", evt);
+    };
+  }
+
+  // request actions: CSRF helper
+  function getCookie(name){
+    const m=document.cookie.match(new RegExp('(^| )'+name+'=([^;]+)'));
+    return m?decodeURIComponent(m[2]):null;
+  }
+
+  document.addEventListener('click', async (e)=>{
+
+    // 13.1B — Send WhatsApp button
+    if (e.target.classList.contains('send-wa-btn')) {
+      const reqId = e.target.dataset.requestId;
+      const select = document.querySelector(
+        `.wa-template-select[data-request-id="${reqId}"]`
+      );
+      if (!select || !select.value) {
+        alert("Please choose a WhatsApp template first.");
+        return;
+      }
+      const tmplId = select.value;
+      const url = `{% url 'portal_request_whatsapp' 0 %}`
+        .replace('/0/', `/${reqId}/`)
+        + `?template_id=${encodeURIComponent(tmplId)}`;
+
+      window.open(url, "_blank");
+      return;
+    }
+
+        // 13.1C — Send WhatsApp from BUSY room card (current stay)
+    if (e.target.classList.contains('send-wa-room-btn')) {
+      const roomId = e.target.dataset.roomId;
+      const select = document.querySelector(
+        `.wa-template-select-room[data-room-id="${roomId}"]`
+      );
+      if (!select || !select.value) {
+        alert("Please choose a WhatsApp template first.");
+        return;
+      }
+      const tmplId = select.value;
+      const url = `{% url 'portal_room_whatsapp' 0 %}`
+        .replace('/0/', `/${roomId}/`)
+        + `?template_id=${encodeURIComponent(tmplId)}`;
+
+      window.open(url, "_blank");
+      return;
+    }
+
+
+    // A) Print slip from Stay popup (handled in loaded HTML; no JS here)
+    if (e.target.classList.contains('stay-print-btn')) {
+      return;
+    }
+
+    // B) Checkout confirm from Stay popup
+    if (e.target.classList.contains('stay-checkout-btn')) {
+      const roomId = e.target.dataset.room;
+      if (!confirm("Proceed to checkout for this stay? The room will move to CLEANING.")) return;
+
+      const res = await fetch("{% url 'portal_stay_checkout' %}", {
+        method: "POST",
+        headers: { "X-CSRFToken": getCookie('csrftoken'), "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ room_id: roomId }),
+        credentials: "same-origin"
+      });
+      const data = await res.json().catch(()=>({ok:false}));
+      if (data.ok){
+        const m = bootstrap.Modal.getInstance(document.getElementById('reqDetailModal'));
+        if (m) m.hide();
+      } else {
+        alert(data.error || "Checkout failed.");
+      }
+      return;
+    }
+
+    // BUSY room — Stay "View details"
+    if (e.target.classList.contains('stay-view-btn')) {
+      const roomId = e.target.dataset.room;
+      const reqDetailModal = new bootstrap.Modal(document.getElementById('reqDetailModal'));
+      const reqDetailBody = document.getElementById('reqDetailBody');
+      reqDetailBody.innerHTML = '<div class="text-muted">Loading…</div>';
+      try {
+        const url = "{% url 'portal_stay_detail_popup' %}" + `?room_id=${encodeURIComponent(roomId)}`;
+        const res = await fetch(url, { credentials: "same-origin" });
+        const data = await res.json();
+        if (data.ok) {
+          reqDetailBody.innerHTML = data.html;
+        } else {
+          reqDetailBody.innerHTML = '<div class="text-danger">Could not load stay details.</div>';
+        }
+      } catch(_) {
+        reqDetailBody.innerHTML = '<div class="text-danger">Could not load stay details.</div>';
+      }
+      reqDetailModal.show();
+      return;
+    }
+
+    // room checkout (BUSY -> CLEANING)
+    if (e.target.classList.contains('co-btn')) {
+      const roomId = e.target.dataset.room;
+      if (!confirm("Check-out this room?")) return;
+      const res = await fetch("{% url 'portal_stay_checkout' %}", {
+        method: "POST",
+        headers: { "X-CSRFToken": getCookie('csrftoken'), "Content-Type":"application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ room_id: roomId }),
+        credentials: "same-origin"
+      });
+      const data = await res.json().catch(()=>({ok:false}));
+      if (!data.ok) alert(data.error || "Could not check out.");
+      return;
+    }
+
+    // mark ready (CLEANING -> FREE)
+    if (e.target.classList.contains('ready-btn')) {
+      const roomId = e.target.dataset.room;
+      if (!confirm("Mark this room as ready (FREE)?")) return;
+      const res = await fetch("{% url 'portal_room_ready' %}", {
+        method: "POST",
+        headers: { "X-CSRFToken": getCookie('csrftoken'), "Content-Type":"application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ room_id: roomId }),
+        credentials: "same-origin"
+      });
+      const data = await res.json().catch(()=>({ok:false}));
+      if (!data.ok) alert(data.error || "Could not mark ready.");
+      return;
+    }
+
+    // request action NEW/ACCEPTED -> ACCEPT/COMPLETE/CANCEL
+    if (e.target.classList.contains('act')){
+      const id = e.target.dataset.id;
+      const action = e.target.dataset.a;
+      const form = new URLSearchParams({ action });
+      await fetch(`{% url 'live_action' 0 %}`.replace('/0/', `/${id}/`), {
+        method: "POST",
+        headers: { "X-CSRFToken": getCookie('csrftoken'), "Content-Type":"application/x-www-form-urlencoded" },
+        body: form,
+        credentials: "same-origin"
+      });
+      return;
+    }
+
+    // request detail view
+    if (e.target.classList.contains('view')){
+      const id = e.target.dataset.id;
+      const reqDetailModal = new bootstrap.Modal(document.getElementById('reqDetailModal'));
+      const reqDetailBody = document.getElementById('reqDetailBody');
+      reqDetailBody.innerHTML = '<div class="text-muted">Loading…</div>';
+      const res = await fetch(`{% url 'live_detail' 0 %}`.replace('/0/', `/${id}/`), { credentials:"same-origin" });
+      const data = await res.json().catch(()=>({ok:false}));
+      if (data.ok){
+        reqDetailBody.innerHTML = data.html;
+      } else {
+        reqDetailBody.innerHTML = '<div class="text-danger">Could not load details.</div>';
+      }
+      reqDetailModal.show();
+      return;
+    }
+
+    // room check-in button
+    if (e.target.classList.contains('ci-btn')){
+      const roomId = e.target.dataset.room;
+      document.getElementById('ciRoomId').value = roomId;
+      document.getElementById('ciGuest').value = '';
+      document.getElementById('ciPhone').value = '';
+      document.getElementById('ciErr').style.display = 'none';
+      const m = new bootstrap.Modal(document.getElementById('checkinModal'));
+      m.show();
+      return;
+    }
+
+  });
+
+  // submit check-in
+  document.getElementById('ciSubmit').addEventListener('click', async ()=>{
+    const roomId = document.getElementById('ciRoomId').value;
+    const guest  = document.getElementById('ciGuest').value.trim();
+    const phone  = document.getElementById('ciPhone').value.trim();
+    const errEl  = document.getElementById('ciErr');
+    errEl.style.display='none'; errEl.textContent='';
+
+    if (!guest || !phone){
+      errEl.textContent = "Guest name and phone required.";
+      errEl.style.display = 'block';
+      return;
+    }
+
+    const res = await fetch("{% url 'portal_stay_checkin' %}", {
+      method: "POST",
+      headers: { "X-CSRFToken": getCookie('csrftoken'), "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ room_id: roomId, guest_name: guest, phone: phone }),
+      credentials: "same-origin"
+    });
+    const data = await res.json().catch(()=>({ok:false}));
+    if (data.ok){
+      const m = bootstrap.Modal.getInstance(document.getElementById('checkinModal'));
+      m.hide();
+    } else {
+      errEl.textContent = data.error || "Could not check in.";
+      errEl.style.display = 'block';
+    }
+  });
+
+  // Start fallback polling + WebSocket
+  setInterval(poll, 8000);
+  setupSocket();
+
+})();
+</script>
+
+<script>
+// --- Django CSRF helper for AJAX-loaded modals ---
+function getCookie(name) {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
+// Attach CSRF token automatically to every form loaded dynamically
+document.addEventListener('submit', function(e) {
+  const form = e.target;
+  if (form.method.toLowerCase() === 'post' && form.action.includes('/mark-paid/')) {
+    if (!form.querySelector('input[name="csrfmiddlewaretoken"]')) {
+      const token = getCookie('csrftoken');
+      if (token) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'csrfmiddlewaretoken';
+        input.value = token;
+        form.appendChild(input);
+      }
+    }
+  }
+}, true);
+</script>
+
+{% endblock %}

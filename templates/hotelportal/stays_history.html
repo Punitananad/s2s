@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Stay History{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <h3 class="mb-0">Stay History</h3>
+  <a
+    class="btn btn-sm btn-outline-secondary"
+    href="{% url 'portal_stays_export_csv' %}?status={{ status }}&room={{ room }}&start={{ start }}&end={{ end }}&q={{ q }}"
+  >Download CSV</a>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-md-2">
+    <select name="status" class="form-select form-select-sm">
+      <option value="">All Status</option>
+      <option value="ACTIVE" {% if status == "ACTIVE" %}selected{% endif %}>Active</option>
+      <option value="CHECKED_OUT" {% if status == "CHECKED_OUT" %}selected{% endif %}>Checked out</option>
+    </select>
+  </div>
+
+  <!-- ROOM DROPDOWN -->
+  <div class="col-md-2">
+    <select name="room" class="form-select form-select-sm">
+      <option value="">All Rooms</option>
+      {% for r in rooms %}
+        <option value="{{ r.number }}"
+                {% if room == r.number %}selected{% endif %}>
+          {{ r.number }}
+        </option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-md-2">
+    <input type="date" name="start" value="{{ start }}" class="form-control form-control-sm">
+  </div>
+  <div class="col-md-2">
+    <input type="date" name="end" value="{{ end }}" class="form-control form-control-sm">
+  </div>
+
+  <div class="col-md-3">
+    <input type="text" name="q" value="{{ q }}" placeholder="Guest/Phone"
+           class="form-control form-control-sm">
+  </div>
+
+  <div class="col-md-1 text-end">
+    <button class="btn btn-sm btn-primary w-100">Filter</button>
+  </div>
+</form>
+
+{% if page_obj and page_obj.paginator.count %}
+  <div class="table-responsive">
+    <table class="table table-sm table-striped align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>ID</th>
+          <th>Room</th>
+          <th>Guest</th>
+          <th>Phone</th>
+          <th>Status</th>
+          <th>Check-in</th>
+          <th>Checkout</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in page_obj %}
+          <tr>
+            <td>{{ s.id }}</td>
+            <td>{{ s.room.number }}</td>
+            <td>{{ s.guest_name|default:"—" }}</td>
+            <td>{{ s.phone|default:"—" }}</td>
+            <td>
+              {% if s.status == "CHECKED_OUT" %}
+                <span class="badge text-bg-dark">CHECKED_OUT</span>
+              {% else %}
+                <span class="badge text-bg-success">ACTIVE</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if s.check_in_at %}
+                {{ s.check_in_at|date:"d M Y, H:i" }}
+              {% endif %}
+            </td>
+            <td>
+              {% if s.check_out_at %}
+                {{ s.check_out_at|date:"d M Y, H:i" }}
+              {% endif %}
+            </td>
+            <td>
+              <a class="btn btn-sm btn-outline-primary"
+                 href="{% url 'portal_stay_detail' s.id %}">View</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <nav aria-label="page navigation">
+    <ul class="pagination pagination-sm justify-content-center">
+      {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link"
+             href="?page={{ page_obj.previous_page_number }}&status={{ status }}&room={{ room }}&start={{ start }}&end={{ end }}&q={{ q }}">«</a>
+        </li>
+      {% endif %}
+      <li class="page-item disabled">
+        <span class="page-link">
+          Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </span>
+      </li>
+      {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link"
+             href="?page={{ page_obj.next_page_number }}&status={{ status }}&room={{ room }}&start={{ start }}&end={{ end }}&q={{ q }}">»</a>
+        </li>
+      {% endif %}
+    </ul>
+  </nav>
+{% else %}
+  <div class="text-muted">No stays found.</div>
+{% endif %}
+{% endblock %}

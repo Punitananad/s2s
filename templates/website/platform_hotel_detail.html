@@ -1,0 +1,185 @@
+{% extends "platform_base.html" %}
+{% block title %}Platform – {{ hotel.name }}{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+  <a href="{% url 'platform_hotel_list' %}" class="btn btn-link btn-sm mb-2">&larr; Back to Hotels</a>
+
+<h3 class="mb-2">{{ hotel.name }}</h3>
+
+<div class="mb-3 d-flex gap-2">
+  <a class="btn btn-primary btn-sm" href="{% url 'platform_hotel_edit' hotel.id %}">
+    Edit Hotel
+  </a>
+
+  <a class="btn btn-outline-success btn-sm" href="{% url 'platform_add_payment' hotel.id %}">
+    Add Payment
+  </a>
+</div>
+
+
+
+
+  <div class="text-muted mb-3">
+    {{ hotel.city }} · Code: {{ hotel.hotel_code|default:"-" }}
+  </div>
+
+  <!-- Tabs (simple, just sections for now) -->
+  <ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+      <a class="nav-link active" href="#general" data-bs-toggle="tab">General</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="#billing" data-bs-toggle="tab">Billing & Plan</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="#payments" data-bs-toggle="tab">Payments</a>
+    </li>
+    <li class="nav-item">
+      <a class="nav-link" href="#requests" data-bs-toggle="tab">Requests</a>
+    </li>
+  </ul>
+
+  <div class="tab-content">
+
+    <!-- General tab -->
+    <div class="tab-pane fade show active" id="general">
+      <div class="card mb-3">
+        <div class="card-body">
+          <h5>Hotel Details</h5>
+          <p class="mb-1"><strong>Name:</strong> {{ hotel.name }}</p>
+          <p class="mb-1"><strong>Code:</strong> {{ hotel.hotel_code|default:"-" }}</p>
+          <p class="mb-1"><strong>City:</strong> {{ hotel.city|default:"-" }}</p>
+          <p class="mb-1"><strong>Address:</strong> {{ hotel.address|default:"-" }}</p>
+          <p class="mb-1"><strong>Owner:</strong> {{ hotel.owner_name|default:"-" }}</p>
+          <p class="mb-1"><strong>Phone:</strong> {{ hotel.phone|default:"-" }}</p>
+          <p class="mb-1"><strong>Email:</strong> {{ hotel.email|default:"-" }}</p>
+          <p class="mb-1"><strong>GST No.:</strong> {{ hotel.gst_number|default:"-" }}</p>
+          <p class="mb-1"><strong>Status:</strong> {{ hotel.status }}</p>
+          <p class="mb-1"><strong>Subscription expires on:</strong> {{ hotel.subscription_expires_on|default:"-" }}</p>
+          <p class="mb-1"><strong>Staff WhatsApp group code:</strong> {{ hotel.staff_whatsapp_group_code|default:"-" }}</p>
+          <p class="mb-0"><strong>Notes:</strong> {{ hotel.notes|default:"-" }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Billing tab -->
+    <div class="tab-pane fade" id="billing">
+      <div class="card mb-3">
+        <div class="card-body">
+          <h5>Billing Settings</h5>
+          <p class="mb-1"><strong>Billing start date:</strong> {{ hotel.billing_start_date|default:"-" }}</p>
+          <p class="mb-1"><strong>Frequency:</strong> {{ hotel.get_billing_frequency_display }}</p>
+          <p class="mb-1"><strong>Amount per period:</strong> ₹ {{ hotel.billing_amount }}</p>
+
+          <hr>
+          <h6>Calculated (till {{ today }})</h6>
+          <p class="mb-1"><strong>Expected payment:</strong> ₹ {{ expected_payment }}</p>
+          <p class="mb-1"><strong>Total received:</strong> ₹ {{ total_received }}</p>
+          <p class="mb-1"><strong>Net due:</strong> ₹ {{ net_due }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payments tab -->
+    <div class="tab-pane fade" id="payments">
+      <div class="card mb-3">
+        <div class="card-body">
+          <h5 class="mb-3">Recent Payments</h5>
+          <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Mode</th>
+                  <th>Reference</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+              {% for p in payments %}
+                <tr>
+                  <td>{{ p.date }}</td>
+                  <td>₹ {{ p.amount }}</td>
+                  <td>{{ p.get_mode_display }}</td>
+                  <td>{{ p.reference|default:"-" }}</td>
+                  <td>{{ p.notes|default:"-" }}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="5" class="text-muted">No payments yet.</td></tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <p class="small text-muted mb-0">
+            You can add/edit payments from Django admin for now (Hotel payments).
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Requests tab -->
+    <div class="tab-pane fade" id="requests">
+      <div class="card mb-3">
+        <div class="card-body">
+          <h5 class="mb-3">Request Log (this hotel)</h5>
+
+          <form method="get" class="row g-2 mb-3">
+            <input type="hidden" name="tab" value="requests">
+            <div class="col-sm-3">
+              <label class="form-label small mb-1">From</label>
+              <input type="date" name="req_start" value="{{ req_start }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label small mb-1">To</label>
+              <input type="date" name="req_end" value="{{ req_end }}" class="form-control form-control-sm">
+            </div>
+            <div class="col-auto align-self-end">
+              <button class="btn btn-primary btn-sm">Filter</button>
+            </div>
+          </form>
+
+          <p class="mb-2">
+            <strong>Total requests:</strong> {{ req_total }}<br>
+            <strong>Total amount (subtotal):</strong> ₹ {{ req_total_amount|default:"0.00" }}
+          </p>
+
+          <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Created</th>
+                  <th>Room</th>
+                  <th>Kind</th>
+                  <th>Status</th>
+                  <th>Subtotal</th>
+                  <th>Note</th>
+                </tr>
+              </thead>
+              <tbody>
+              {% for r in requests_sample %}
+                <tr>
+                  <td>{{ r.id }}</td>
+                  <td>{{ r.created_at|date:"d M Y H:i" }}</td>
+                  <td>{{ r.room.number }}</td>
+                  <td>{{ r.kind }}</td>
+                  <td>{{ r.status }}</td>
+                  <td>₹ {{ r.subtotal }}</td>
+                  <td>{{ r.note|default:"-" }}</td>
+                </tr>
+              {% empty %}
+                <tr><td colspan="7" class="text-muted">No requests found for this range.</td></tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "platform_base.html" %}
+{% block title %}Platform – Requests{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+  <h3 class="mb-3">All Requests (Platform)</h3>
+
+  <form method="get" class="row g-2 mb-3">
+    <div class="col-md-3">
+      <label class="form-label small mb-1">Hotel</label>
+      <select name="hotel" class="form-select form-select-sm">
+        <option value="">All hotels</option>
+        {% for h in hotels %}
+          <option value="{{ h.id }}" {% if h.id|stringformat:"s" == selected_hotel %}selected{% endif %}>
+            {{ h.name }} ({{ h.city }})
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small mb-1">From</label>
+      <input type="date" name="start" value="{{ start }}" class="form-control form-control-sm">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small mb-1">To</label>
+      <input type="date" name="end" value="{{ end }}" class="form-control form-control-sm">
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small mb-1">Kind</label>
+      <select name="kind" class="form-select form-select-sm">
+        <option value="">All</option>
+        <option value="FOOD" {% if kind == "FOOD" %}selected{% endif %}>Food</option>
+        <option value="SERVICE" {% if kind == "SERVICE" %}selected{% endif %}>Service</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small mb-1">Status</label>
+      <select name="status" class="form-select form-select-sm">
+        <option value="">All</option>
+        <option value="NEW" {% if status == "NEW" %}selected{% endif %}>New</option>
+        <option value="ACCEPTED" {% if status == "ACCEPTED" %}selected{% endif %}>Accepted</option>
+        <option value="COMPLETED" {% if status == "COMPLETED" %}selected{% endif %}>Completed</option>
+        <option value="CANCELLED" {% if status == "CANCELLED" %}selected{% endif %}>Cancelled</option>
+      </select>
+    </div>
+    <div class="col-auto align-self-end">
+      <button class="btn btn-primary btn-sm">Filter</button>
+    </div>
+  </form>
+
+  <p class="mb-2">
+    <strong>Total requests:</strong> {{ total_requests }}<br>
+    <strong>Total amount (subtotal):</strong> ₹ {{ total_amount|default:"0.00" }}
+  </p>
+
+  <div class="table-responsive">
+    <table class="table table-sm table-striped align-middle">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Hotel</th>
+          <th>Created</th>
+          <th>Room</th>
+          <th>Kind</th>
+          <th>Status</th>
+          <th>Subtotal</th>
+          <th>Note</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for r in requests %}
+        <tr>
+          <td>{{ r.id }}</td>
+          <td>{{ r.hotel.name }}</td>
+          <td>{{ r.created_at|date:"d M Y H:i" }}</td>
+          <td>{{ r.room.number }}</td>
+          <td>{{ r.kind }}</td>
+          <td>{{ r.status }}</td>
+          <td>₹ {{ r.subtotal }}</td>
+          <td>{{ r.note|default:"-" }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8" class="text-muted">No requests for this filter.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

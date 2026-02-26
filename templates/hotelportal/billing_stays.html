@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Billing — Stays{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h3 class="mb-1">Billing — Stays</h3>
+    <div class="small text-muted">
+      Filter and review stay-wise bills with invoice, payment mode and status.
+    </div>
+  </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Billing — Stays</h3>
+
+  <div class="d-flex gap-2">
+    <!-- keep your existing buttons/filters here -->
+
+    <a href="{% url 'portal_billing_export' %}?{{ request.GET.urlencode }}"
+       class="btn btn-outline-secondary btn-sm">
+      Export CSV
+    </a>
+  </div>
+</div>
+
+
+<form method="get" class="row g-2 align-items-end mb-3">
+  <div class="col-12 col-md-2">
+    <label class="form-label mb-1 small">Paid status</label>
+    <select name="paid" class="form-select form-select-sm">
+      <option value="ALL"   {% if paid == "ALL" %}selected{% endif %}>All</option>
+      <option value="PAID"  {% if paid == "PAID" %}selected{% endif %}>Paid</option>
+      <option value="UNPAID"{% if paid == "UNPAID" %}selected{% endif %}>Unpaid</option>
+    </select>
+  </div>
+
+  <div class="col-12 col-md-2">
+    <label class="form-label mb-1 small">Payment mode</label>
+    <select name="payment_mode" class="form-select form-select-sm">
+      <option value="" {% if not payment_mode %}selected{% endif %}>All</option>
+      <option value="CASH" {% if payment_mode == "CASH" %}selected{% endif %}>Cash</option>
+      <option value="UPI"  {% if payment_mode == "UPI" %}selected{% endif %}>UPI</option>
+      <option value="CARD" {% if payment_mode == "CARD" %}selected{% endif %}>Card</option>
+      <option value="ROOM" {% if payment_mode == "ROOM" %}selected{% endif %}>Room Charge</option>
+      <option value="OTHER"{% if payment_mode == "OTHER" %}selected{% endif %}>Other</option>
+    </select>
+  </div>
+
+
+  
+
+  <div class="col-6 col-md-2">
+    <label class="form-label mb-1 small">From (Check-in)</label>
+    <input type="date" name="start" class="form-control form-control-sm" value="{{ start }}">
+  </div>
+
+  <div class="col-6 col-md-2">
+    <label class="form-label mb-1 small">To (Check-in)</label>
+    <input type="date" name="end" class="form-control form-control-sm" value="{{ end }}">
+  </div>
+
+  <div class="col-12 col-md-3">
+    <label class="form-label mb-1 small">Search</label>
+    <input
+      type="text"
+      name="q"
+      class="form-control form-control-sm"
+      placeholder="Guest / phone / invoice"
+      value="{{ q }}"
+    >
+  </div>
+
+  <div class="col-12 col-md-1 d-grid">
+    <button class="btn btn-sm btn-primary">Filter</button>
+  </div>
+</form>
+
+{% if page_obj.object_list %}
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Stay</th>
+          <th>Room</th>
+          <th>Guest</th>
+          <th>Check-in / Check-out</th>
+          <th class="text-end">Total Due (₹)</th>
+          <th>Invoice</th>
+          <th>Status</th>
+          <th>Paid at</th>
+          <th>Mode</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in page_obj.object_list %}
+          <tr>
+            <td>#{{ s.id }}</td>
+            <td>Room {{ s.room.number }}</td>
+            <td>
+              {{ s.guest_name|default:"—" }}<br>
+              <span class="small text-muted">{{ s.phone|default:"" }}</span>
+            </td>
+            <td class="small">
+              In: {{ s.check_in_at|date:"d M Y, H:i" }}<br>
+              {% if s.check_out_at %}
+                Out: {{ s.check_out_at|date:"d M Y, H:i" }}
+              {% else %}
+                <span class="text-muted">Active</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              ₹ {{ s.total_due|default:"0.00" }}
+            </td>
+            <td>
+              {% if s.invoice_no %}
+                <a href="{% url 'portal_stay_invoice' s.id %}" target="_blank">
+                  {{ s.invoice_no }}
+                </a>
+              {% else %}
+                <span class="text-muted small">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if s.is_paid %}
+                <span class="badge text-bg-success">PAID</span>
+              {% else %}
+                <span class="badge text-bg-warning">UNPAID</span>
+              {% endif %}
+            </td>
+            <td class="small">
+              {% if s.paid_at %}
+                {{ s.paid_at|date:"d M Y, H:i" }}
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td class="small">
+              {% if s.payment_mode %}
+                {{ s.get_payment_mode_display }}
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <nav aria-label="Billing pagination" class="mt-2">
+    <ul class="pagination pagination-sm mb-0">
+      {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.previous_page_number }}&paid={{ paid }}&payment_mode={{ payment_mode }}&start={{ start }}&end={{ end }}&q={{ q }}">«</a>
+        </li>
+      {% endif %}
+      <li class="page-item disabled">
+        <span class="page-link">
+          Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </span>
+      </li>
+      {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="?page={{ page_obj.next_page_number }}&paid={{ paid }}&payment_mode={{ payment_mode }}&start={{ start }}&end={{ end }}&q={{ q }}">»</a>
+        </li>
+      {% endif %}
+    </ul>
+  </nav>
+{% else %}
+  <div class="alert alert-light border">
+    No stays found for this filter.
+  </div>
+{% endif %}
+{% endblock %}

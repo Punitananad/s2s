@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Items – {{ request.user.hotel.name }}{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h3 class="mb-0">Menu items</h3>
+    <small class="text-muted">
+      Manage all food & service items for {{ request.user.hotel.name }}.
+    </small>
+  </div>
+  <div>
+    <a href="{% url 'item_create' %}" class="btn btn-sm btn-primary">
+      + Add new item
+    </a>
+  </div>
+</div>
+
+{# --- Kind toggle: FOOD / SERVICE --- #}
+<div class="mb-3">
+  {% with k=current_kind|default:"FOOD" %}
+    <div class="btn-group" role="group">
+      <a href="{% url 'items_list' %}?kind=FOOD"
+         class="btn btn-sm {% if k == 'FOOD' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+        Food items
+      </a>
+      <a href="{% url 'items_list' %}?kind=SERVICE"
+         class="btn btn-sm {% if k == 'SERVICE' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+        Service items
+      </a>
+    </div>
+  {% endwith %}
+</div>
+
+{# Optional small stats bar #}
+{% if total_count is not None %}
+  <div class="mb-3 small text-muted">
+    Total: {{ total_count }} item(s)
+    {% if available_count is not None %}
+      • Available: {{ available_count }}
+    {% endif %}
+    {% if unavailable_count is not None %}
+      • Not available: {{ unavailable_count }}
+    {% endif %}
+  </div>
+{% endif %}
+
+<div class="card">
+  <div class="card-body p-0">
+    {% if items %}
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 40%;">Item</th>
+              <th style="width: 20%;">Category</th>
+              <th style="width: 10%;">Price</th>
+              <th style="width: 10%;">Unit</th>
+              <th style="width: 10%;">Availability</th>
+              <th style="width: 10%;" class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for it in items %}
+              <tr>
+                <td>
+                  <div class="d-flex align-items-center">
+                    {% if it.image and it.image.file %}
+                      <img src="{{ it.image.file.url }}"
+                           alt="{{ it.name }}"
+                           style="width:40px;height:40px;object-fit:cover;border-radius:6px;margin-right:0.5rem;">
+                    {% endif %}
+                    <div>
+                      <div class="fw-semibold">{{ it.name }}</div>
+                      {% if it.description %}
+                        <div class="small text-muted">
+                          {{ it.description|truncatechars:80 }}
+                        </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  {{ it.category.name }}
+                  <div class="small text-muted">
+                    {{ it.category.get_kind_display }}
+                  </div>
+                </td>
+                <td>₹ {{ it.price|floatformat:2 }}</td>
+                <td>{{ it.unit }}</td>
+                <td>
+                  {% if it.is_available %}
+                    <span class="badge bg-success">Available</span>
+                  {% else %}
+                    <span class="badge bg-secondary">Not available</span>
+                  {% endif %}
+                </td>
+                <td class="text-end">
+                  {# Edit #}
+                  <a href="{% url 'item_edit' it.id %}"
+                     class="btn btn-sm btn-outline-primary me-1">
+                    Edit
+                  </a>
+
+                  {# Toggle availability #}
+                  <form method="post"
+                        action="{% url 'item_toggle_available' it.id %}"
+                        class="d-inline me-1">
+                    {% csrf_token %}
+                    <input type="hidden" name="next"
+                           value="{% url 'items_list' %}?kind={{ current_kind }}">
+                    {% if it.is_available %}
+                      <button type="submit"
+                              class="btn btn-sm btn-outline-warning">
+                        Mark unavailable
+                      </button>
+                    {% else %}
+                      <button type="submit"
+                              class="btn btn-sm btn-outline-success">
+                        Mark available
+                      </button>
+                    {% endif %}
+                  </form>
+
+                  {# DELETE item #}
+                  <form method="post"
+                        action="{% url 'item_delete' it.id %}"
+                        class="d-inline"
+                        onsubmit="return confirm('Cannot delete {{ it.name }} because it is used in past orders. Please mark it as Not available instead.');">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="btn btn-sm btn-outline-danger">
+                      Delete
+                    </button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="p-3 text-muted">
+        No items found for this type.
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

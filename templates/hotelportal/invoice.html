@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% load static %}
+{% load tz %}
+
+{% block title %}Invoice — Stay #{{ stay.id }} (Room {{ room.number }}){% endblock %}
+
+{% block content %}
+<style>
+  .inv-wrap { max-width: 900px; margin: 0 auto; }
+  .muted { color:#6c757d; }
+  .table-sm th, .table-sm td { padding:.35rem .5rem; }
+  @media print {
+    .no-print { display: none !important; }
+    .inv-card { box-shadow: none !important; border: none !important; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+
+<div class="inv-wrap">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h3 class="mb-0">Invoice</h3>
+      <div class="muted small">
+        {% if invoice_no %}Invoice No: <strong>{{ invoice_no }}</strong> · {% endif %}
+        Generated: {% now "d M Y, H:i" %}
+      </div>
+    </div>
+    <div class="no-print">
+      <button class="btn btn-primary btn-sm" onclick="window.print()">Print</button>
+    </div>
+  </div>
+
+  <div class="card inv-card mb-3">
+    <div class="card-body">
+      <div class="row">
+        <!-- Hotel -->
+        <div class="col-12 col-md-6">
+          <h5 class="mb-1">{{ hotel.name }}</h5>
+          {% if gst_number %}
+            <div class="small">GSTIN: <strong>{{ gst_number }}</strong></div>
+          {% endif %}
+          {# Add hotel address/phone here if available on your Hotel model #}
+        </div>
+
+        <!-- Guest/Stay -->
+        <div class="col-12 col-md-6">
+          <div class="small"><strong>Room:</strong> {{ room.number }}</div>
+          <div class="small"><strong>Guest:</strong> {{ stay.guest_name }}</div>
+          <div class="small"><strong>Phone:</strong> {{ stay.phone }}</div>
+          <div class="small">
+            <strong>Check-in:</strong> {{ stay.check_in_at|date:"d M Y, H:i" }}
+            {% if stay.check_out_at %} ·
+              <strong>Check-out:</strong> {{ stay.check_out_at|date:"d M Y, H:i" }}
+            {% endif %}
+          </div>
+          {% if paid_at %}
+            <div class="small">
+              <strong>Paid:</strong> {{ paid_at|date:"d M Y, H:i" }}
+              {% if payment_mode %} · <strong>Mode:</strong> {{ payment_mode }}{% endif %}
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Line items -->
+  <div class="card inv-card mb-3">
+    <div class="card-header bg-light">Items & Services</div>
+    <div class="card-body">
+      {% if requests %}
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead class="table-light">
+              <tr>
+                <th style="width:55%">Description</th>
+                <th class="text-end" style="width:10%">Qty</th>
+                <th class="text-end" style="width:15%">Rate</th>
+                <th class="text-end" style="width:20%">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {# FOOD: expand into its RequestLine rows; SERVICE: single row from request #}
+              {% for r in requests %}
+                {% if r.kind == "FOOD" %}
+                  {% for ln in r.lines.all %}
+                    <tr>
+                      <td>
+                        {{ ln.name_snapshot }}
+                        <div class="small muted">Req #{{ r.id }} · {{ r.created_at|date:"d M Y, H:i" }}</div>
+                        {% if forloop.first and r.note %}
+                          <div class="small"><em>Note:</em> {{ r.note }}</div>
+                        {% endif %}
+                      </td>
+                      <td class="text-end">{{ ln.qty }}</td>
+                      <td class="text-end">₹ {{ ln.price_snapshot }}</td>
+                      <td class="text-end">₹ {{ ln.line_total }}</td>
+                    </tr>
+                  {% empty %}
+                    {# Food request but no lines (edge) — fall back to request subtotal #}
+                    <tr>
+                      <td>
+                        Food order (no lines)
+                        <div class="small muted">Req #{{ r.id }} · {{ r.created_at|date:"d M Y, H:i" }}</div>
+                        {% if r.note %}<div class="small"><em>Note:</em> {{ r.note }}</div>{% endif %}
+                      </td>
+                      <td class="text-end">1</td>
+                      <td class="text-end">₹ {{ r.subtotal }}</td>
+                      <td class="text-end">₹ {{ r.subtotal }}</td>
+                    </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr>
+                    <td>
+                      {% if r.service_item %}{{ r.service_item.name }}{% else %}Service{% endif %}
+                      <div class="small muted">Req #{{ r.id }} · {{ r.created_at|date:"d M Y, H:i" }}</div>
+                      {% if r.note %}<div class="small"><em>Note:</em> {{ r.note }}</div>{% endif %}
+                    </td>
+                    <td class="text-end">1</td>
+                    <td class="text-end">₹ {{ r.subtotal }}</td>
+                    <td class="text-end">₹ {{ r.subtotal }}</td>
+                  </tr>
+                {% endif %}
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="muted">No billable requests for this stay.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Totals -->
+  <div class="card inv-card">
+    <div class="card-body">
+      <div class="d-flex justify-content-end">
+        <div style="min-width:300px">
+          <div class="d-flex justify-content-between">
+            <div>Subtotal</div>
+            <div><strong>₹ {{ subtotal }}</strong></div>
+          </div>
+          <div class="d-flex justify-content-between">
+            <div>GST ({{ gst_percent }}%)</div>
+            <div><strong>₹ {{ tax }}</strong></div>
+          </div>
+          <hr class="my-2">
+          <div class="d-flex justify-content-between">
+            <div><strong>Grand Total</strong></div>
+            <div><strong>₹ {{ grand_total }}</strong></div>
+          </div>
+        </div>
+      </div>
+      <div class="small muted mt-3">
+        Prices include only item/service subtotals. Discounts, service charges, and detailed GST breakup can be added later.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

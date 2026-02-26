@@ -1,0 +1,66 @@
+{% load static %}
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Stay Slip — Room {{ room.number }}</title>
+  <style>
+    *{ box-sizing: border-box; }
+    body{ font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 16px; }
+    .hdr{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
+    .muted{ color:#666; font-size:12px; }
+    .row{ display:flex; justify-content:space-between; }
+    .card{ border:1px solid #ddd; border-radius:6px; padding:10px; margin-bottom:12px; }
+    .hr{ height:1px; background:#ddd; margin:10px 0; }
+    @media print {
+      .no-print{ display:none !important; }
+      body{ margin:0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="hdr">
+    <div>
+      <div><strong>Stay Slip</strong></div>
+      <div class="muted">Room {{ room.number }}</div>
+      <div class="muted">
+        Guest: {{ stay.guest_name|default:"—" }}
+        {% if stay.phone %} ({{ stay.phone }}){% endif %}
+      </div>
+    </div>
+    <div class="no-print">
+      <button onclick="window.print()">Print</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row"><div>Food total</div><div>₹ {{ food_total }}</div></div>
+    <div class="row"><div>Service total</div><div>₹ {{ svc_total }}</div></div>
+    <div class="hr"></div>
+    <div class="row"><strong>Grand total</strong><strong>₹ {{ grand_total }}</strong></div>
+  </div>
+
+  <div class="card">
+    <div><strong>Requests</strong></div>
+    <div class="hr"></div>
+    {% for r in requests %}
+      <div style="margin-bottom:6px;">
+        <div class="row">
+          <div class="muted">#{{ r.id }} · {{ r.created_at|date:"d M, H:i" }}</div>
+          <div>₹ {{ r.subtotal }}</div>
+        </div>
+        {% if r.kind == "FOOD" %}
+          <div>FOOD</div>
+        {% else %}
+          <div>SERVICE{% if r.service_item %}: {{ r.service_item.name }}{% endif %}</div>
+        {% endif %}
+        {% if r.note %}<div class="muted">Note: {{ r.note }}</div>{% endif %}
+      </div>
+    {% empty %}
+      <div class="muted">No requests recorded.</div>
+    {% endfor %}
+  </div>
+
+  <div class="muted">Generated on {{ now|default:None }}</div>
+</body>
+</html>

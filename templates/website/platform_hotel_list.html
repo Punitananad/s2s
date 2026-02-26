@@ -1,0 +1,66 @@
+{% extends "platform_base.html" %}
+{% block title %}Platform – Hotels{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+  <h3 class="mb-3">All Hotels (Platform)</h3>
+
+  <form method="get" class="row g-2 mb-3">
+    <div class="col-sm-6 col-md-4">
+      <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Search name / city / code">
+    </div>
+    <div class="col-auto">
+      <button class="btn btn-primary btn-sm">Search</button>
+    </div>
+  </form>
+
+  <div class="table-responsive">
+    <table class="table table-sm table-striped align-middle">
+      <thead>
+        <tr>
+          <th>Hotel</th>
+          <th>City</th>
+          <th>Code</th>
+          <th>Status</th>
+          <th>Subscription Expiry</th>
+          <th>Converted?</th>
+          <th>Net Due (approx)</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for h in hotels %}
+        <tr>
+          <td>{{ h.name }}</td>
+          <td>{{ h.city }}</td>
+          <td>{{ h.hotel_code }}</td>
+          <td>{{ h.status }}</td>
+          <td>{{ h.subscription_expires_on|default:"-" }}</td>
+          <td>
+            {% if h.payments.all %}
+              {% if h.payments.count %}
+                ✅ Converted
+              {% else %}
+                Trial
+              {% endif %}
+            {% else %}
+              Trial
+            {% endif %}
+          </td>
+          <td>
+            ₹ {{ h.net_due|default:"0.00" }}
+          </td>
+          <td class="text-end">
+            <a href="{% url 'platform_hotel_detail' h.id %}" class="btn btn-outline-secondary btn-sm">
+              View
+            </a>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8" class="text-muted">No hotels yet.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

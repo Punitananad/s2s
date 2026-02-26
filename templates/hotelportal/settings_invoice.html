@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Invoice Settings{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3 class="mb-0">Invoice Settings</h3>
+  <a href="{% url 'portal_settings' %}" class="btn btn-sm btn-outline-secondary">Back to Settings</a>
+</div>
+
+<div class="row">
+  <div class="col-12 col-md-7 col-lg-6">
+    <div class="card">
+      <div class="card-header bg-light">GST & Invoice</div>
+      <div class="card-body">
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          <div class="mb-3">
+            <label class="form-label">GST Number</label>
+            {{ form.gst_number }}
+            {% if form.gst_number.errors %}<div class="text-danger small">{{ form.gst_number.errors.0 }}</div>{% endif %}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">GST %</label>
+            {{ form.gst_percent }}
+            {% if form.gst_percent.errors %}<div class="text-danger small">{{ form.gst_percent.errors.0 }}</div>{% endif %}
+            <div class="form-text">e.g. 18.00 — applied to taxable total.</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Invoice Prefix</label>
+            {{ form.invoice_prefix }}
+            {% if form.invoice_prefix.errors %}<div class="text-danger small">{{ form.invoice_prefix.errors.0 }}</div>{% endif %}
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Next Invoice Sequence</label>
+            {{ form.next_invoice_seq }}
+            {% if form.next_invoice_seq.errors %}<div class="text-danger small">{{ form.next_invoice_seq.errors.0 }}</div>{% endif %}
+            <div class="form-text">The next invoice will use this sequence. It auto-increments when you mark a bill paid.</div>
+          </div>
+
+          <div class="d-flex justify-content-end">
+            <button class="btn btn-primary">Save Settings</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="alert alert-info mt-3">
+      <div class="fw-semibold mb-1">How it’s used</div>
+      <ul class="mb-0">
+        <li><strong>GST Number</strong> &amp; <strong>GST %</strong> show on invoices.</li>
+        <li>Invoice numbers are built from <strong>Prefix</strong> + zero-padded <strong>Sequence</strong> (e.g., <code>INV-000123</code>).</li>
+        <li>On “Mark Paid”, we assign the current number and increment the sequence.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}

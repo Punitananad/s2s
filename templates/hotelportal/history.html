@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Request History{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <h3 class="mb-0">Request History</h3>
+  <a
+    class="btn btn-sm btn-outline-secondary"
+    href="{% url 'portal_requests_export_csv' %}?status={{ status }}&kind={{ kind }}&room={{ room }}&start={{ start }}&end={{ end }}&q={{ q }}"
+  >Download CSV</a>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-md-2">
+    <select name="status" class="form-select form-select-sm">
+      <option value="">All Status</option>
+      <option value="NEW" {% if status == "NEW" %}selected{% endif %}>NEW</option>
+      <option value="ACCEPTED" {% if status == "ACCEPTED" %}selected{% endif %}>ACCEPTED</option>
+      <option value="COMPLETED" {% if status == "COMPLETED" %}selected{% endif %}>COMPLETED</option>
+      <option value="CANCELLED" {% if status == "CANCELLED" %}selected{% endif %}>CANCELLED</option>
+    </select>
+  </div>
+
+  <div class="col-md-2">
+    <select name="kind" class="form-select form-select-sm">
+      <option value="">All Types</option>
+      <option value="FOOD" {% if kind == "FOOD" %}selected{% endif %}>Food</option>
+      <option value="SERVICE" {% if kind == "SERVICE" %}selected{% endif %}>Service</option>
+    </select>
+  </div>
+
+  <div class="col-md-2">
+    <select name="room" class="form-select form-select-sm">
+      <option value="">All Rooms</option>
+      {% for rn in rooms %}
+        <option value="{{ rn }}" {% if room == rn|stringformat:"s" %}selected{% endif %}>{{ rn }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-md-2">
+    <input type="date" name="start" value="{{ start }}" class="form-control form-control-sm">
+  </div>
+
+  <div class="col-md-2">
+    <input type="date" name="end" value="{{ end }}" class="form-control form-control-sm">
+  </div>
+
+  <div class="col-md-2">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search..." class="form-control form-control-sm">
+  </div>
+
+  <div class="col-12 mt-2 text-end">
+    <button class="btn btn-sm btn-primary">Filter</button>
+  </div>
+</form>
+
+{% if page_obj and page_obj.paginator.count %}
+  <div class="table-responsive">
+    <table class="table table-sm table-striped align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>ID</th>
+          <th>Room</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th class="text-end">Subtotal</th>
+          <th>Created</th>
+          <th>Completed</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in page_obj %}
+          <tr>
+            <td>{{ r.id }}</td>
+            <td>{{ r.room.number }}</td>
+            <td>
+              {% if r.kind == "FOOD" %}
+                <span class="badge text-bg-primary">FOOD</span>
+              {% else %}
+                <span class="badge text-bg-info">SERVICE</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if r.status == "NEW" %}
+                <span class="badge text-bg-secondary">NEW</span>
+              {% elif r.status == "ACCEPTED" %}
+                <span class="badge text-bg-warning">ACCEPTED</span>
+              {% elif r.status == "COMPLETED" %}
+                <span class="badge text-bg-success">COMPLETED</span>
+              {% else %}
+                <span class="badge text-bg-dark">CANCELLED</span>
+              {% endif %}
+            </td>
+            <td class="text-end">₹ {{ r.subtotal }}</td>
+            <td>{{ r.created_at|date:"d M Y, H:i" }}</td>
+            <td>{% if r.completed_at %}{{ r.completed_at|date:"d M Y, H:i" }}{% endif %}</td>
+            <td>
+              <a href="{% url 'portal_request_detail' r.id %}" class="btn btn-outline-primary btn-sm">View</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <nav aria-label="page navigation">
+    <ul class="pagination pagination-sm justify-content-center">
+      {% if page_obj.has_previous %}
+        <li class="page-item">
+          <a class="page-link"
+             href="?page={{ page_obj.previous_page_number }}&status={{ status }}&kind={{ kind }}&room={{ room }}&start={{ start }}&end={{ end }}&q={{ q }}">«</a>
+        </li>
+      {% endif %}
+      <li class="page-item disabled">
+        <span class="page-link">
+          Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </span>
+      </li>
+      {% if page_obj.has_next %}
+        <li class="page-item">
+          <a class="page-link"
+             href="?page={{ page_obj.next_page_number }}&status={{ status }}&kind={{ kind }}&room={{ room }}&start={{ start }}&end={{ end }}&q={{ q }}">»</a>
+        </li>
+      {% endif %}
+    </ul>
+  </nav>
+{% else %}
+  <div class="text-muted">No requests found.</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Subscription Expired{% endblock %}
+
+{% block content %}
+<div class="container py-5 text-center">
+  <h2 class="mb-2">Your subscription has expired</h2>
+  <p class="text-muted">
+    Please contact Scan2Service support to renew your plan.
+  </p>
+
+  {% if hotel %}
+    <div class="card mx-auto mt-3" style="max-width:420px;">
+      <div class="card-body text-start">
+        <div><strong>Hotel:</strong> {{ hotel.name }}</div>
+        <div><strong>Expiry:</strong> {{ hotel.subscription_expires_on }}</div>
+        <div><strong>Expected:</strong> ₹{{ hotel.billing_expected_amount }}</div>
+        <div><strong>Received:</strong> ₹{{ hotel.total_payment_received }}</div>
+        <div><strong>Net Due:</strong> ₹{{ hotel.net_due }}</div>
+      </div>
+    </div>
+  {% endif %}
+
+  <a href="/logout/" class="btn btn-outline-secondary mt-4">Logout</a>
+</div>
+{% endblock %}

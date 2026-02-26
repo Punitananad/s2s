@@ -1,0 +1,1108 @@
+{% extends "base.html" %}
+{% load static dict_tags %}
+
+{% block title %}{{ hotel.name }} – Room {{ room.number }}{% endblock %}
+
+{% block content %}
+
+<style>
+  body {
+    background-color: #f6f7fb;
+  }
+
+  .guest-shell {
+    min-height: calc(100vh - 80px);
+    padding-bottom: 120px; /* space for mini-cart + category bar */
+  }
+
+  .mode-toggle-card {
+    cursor: pointer;
+    border-radius: 14px;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .mode-toggle-card.active {
+    border: 2px solid #0d6efd;
+    box-shadow: 0 0.3rem 0.9rem rgba(13, 110, 253, 0.2);
+    background: #e8f1ff;
+  }
+
+  .mode-toggle-card h6 {
+    margin-bottom: 0.25rem;
+  }
+
+  .mode-toggle-card small {
+    color: #6c757d;
+  }
+
+  .phone-banner {
+    background: #fff3cd;
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+  }
+
+  .small-pill {
+    font-size: 0.78rem;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+  }
+
+  .category-section-title {
+    font-size: 0.95rem;
+    margin: 1.25rem 0 0.4rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #6c757d;
+  }
+
+  .item-card {
+    height: 100%;
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .item-card-img {
+    width: 100%;
+    height: 110px;
+    object-fit: cover;
+  }
+
+  .item-card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .item-price {
+    font-weight: 600;
+    color: #198754;
+  }
+
+  /* Bottom categories bar */
+  .category-bar-wrap {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    background: #ffffff;
+    border-top: 1px solid #dee2e6;
+    box-shadow: 0 -0.3rem 0.6rem rgba(0, 0, 0, 0.05);
+    padding: 0.35rem 0;
+  }
+
+  .category-bar-inner {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .category-bar-inner::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .category-bar-inner::-webkit-scrollbar-thumb {
+    background: #ced4da;
+    border-radius: 999px;
+  }
+
+  .category-chip {
+    white-space: nowrap;
+    border-radius: 999px;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.82rem;
+    cursor: pointer;
+    border: 1px solid #dee2e6;
+    background-color: #ffffff;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .category-chip.active-chip {
+    background-color: #0d6efd;
+    color: #fff;
+    border-color: #0d6efd;
+  }
+
+  .cat-icon-placeholder {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #0d6efd;
+    color: #fff;
+    font-size: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cat-icon-img {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: inline-block;
+  }
+
+  /* Mini cart bar */
+  .mini-cart-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 52px; /* above category bar */
+    z-index: 45;
+  }
+
+  .mini-cart-inner {
+    background: #212529;
+    color: #fff;
+    border-radius: 999px;
+    padding: 0.4rem 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .mini-cart-summary {
+    font-size: 0.85rem;
+  }
+
+  .mini-cart-summary strong {
+    font-size: 0.92rem;
+  }
+
+  .cart-note-label {
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+</style>
+
+<div class="guest-shell">
+
+  <!-- Header -->
+  <div class="mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div>
+        <h4 class="mb-0">{{ hotel.name }}</h4>
+        <small class="text-muted">
+          Room {{ room.number }}{% if hotel.city %} · {{ hotel.city }}{% endif %}
+        </small>
+      </div>
+      <div class="text-end small">
+        {% if phone_verified and guest_name %}
+          <div>👤 {{ guest_name }}</div>
+        {% elif phone_verified %}
+          <div>👤 Verified guest</div>
+        {% endif %}
+        {% if has_stay %}
+          <span class="badge bg-success small-pill mt-1">In-house guest</span>
+        {% endif %}
+        <div class="mt-2">
+          <button type="button" class="btn btn-outline-primary btn-sm" id="btn-my-services">
+            My services
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if needs_phone and not phone_verified %}
+    <div class="phone-banner mb-3">
+      🔒 For your security, please verify your phone number with hotel staff to place orders from this room.
+    </div>
+  {% endif %}
+
+  <!-- 📱 PHONE VERIFY MODAL (non-dismissable until verified) -->
+  <div class="modal fade" id="phoneModal" tabindex="-1"
+       data-bs-backdrop="static" data-bs-keyboard="false" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Verify your phone</h5>
+          <!-- will remain hidden while locked -->
+          <button type="button" class="btn-close d-none" id="phoneCloseBtn" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-warning small mb-2">
+            Enter the phone number you gave at check-in to place orders/requests.
+          </div>
+          <input id="phoneInput" class="form-control" placeholder="Enter phone" inputmode="numeric" />
+          <div class="invalid-feedback d-block" id="phoneErr" style="display:none;"></div>
+        </div>
+        <div class="modal-footer">
+          <button id="phoneVerifyBtn" class="btn btn-primary w-100">Verify</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mode cards -->
+  <div class="row g-3 mb-3">
+    <div class="col-6">
+      <div id="mode-food-card" class="mode-toggle-card border bg-white p-3 active"
+           data-mode="FOOD">
+        <div class="d-flex align-items-center gap-2">
+          <div class="rounded-circle bg-danger-subtle d-flex align-items-center justify-content-center"
+               style="width:32px;height:32px;">
+            🍽️
+          </div>
+          <div>
+            <h6 class="mb-0">Food</h6>
+            <small>Meals, snacks & drinks</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6">
+      <div id="mode-service-card" class="mode-toggle-card border bg-white p-3"
+           data-mode="SERVICE">
+        <div class="d-flex align-items-center gap-2">
+          <div class="rounded-circle bg-info-subtle d-flex align-items-center justify-content-center"
+               style="width:32px;height:32px;">
+            🧹
+          </div>
+          <div>
+            <h6 class="mb-0">Services</h6>
+            <small>Cleaning, towels, support</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOD LIST -->
+  <div id="section-food">
+    {% if food_categories %}
+      {% for cat in food_categories %}
+        {% with items=items_by_cat|get_item:cat.id %}
+          {% if items %}
+            <div id="cat-{{ cat.id }}" class="category-block">
+              <div class="category-section-title">
+                {{ cat.name }}
+              </div>
+              <div class="row g-3">
+                {% for it in items %}
+                  <div class="col-6 col-md-4">
+                    <div class="card item-card shadow-sm border-0">
+                      {% if it.image and it.image.file %}
+                        <img src="{{ it.image.file.url }}" alt="{{ it.name }}" class="item-card-img">
+                      {% endif %}
+                      <div class="card-body item-card-body">
+                        <h6 class="card-title mb-1">{{ it.name }}</h6>
+                        {% if it.description %}
+                          <p class="small text-muted mb-1">{{ it.description|truncatechars:60 }}</p>
+                        {% endif %}
+                        {% if it.price %}
+                          <div class="item-price mb-2">₹ {{ it.price|floatformat:2 }}</div>
+                        {% endif %}
+                        <button type="button"
+                                class="btn btn-sm btn-primary mt-auto w-100 btn-add-to-cart"
+                                data-item-id="{{ it.id }}">
+                          + Add to cart
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% endif %}
+        {% endwith %}
+      {% endfor %}
+    {% else %}
+      <p class="text-muted mt-3">Food menu not available.</p>
+    {% endif %}
+  </div>
+
+  <!-- SERVICE LIST -->
+  <div id="section-service" style="display:none;">
+    {% if service_categories %}
+      {% for cat in service_categories %}
+        {% with items=items_by_cat|get_item:cat.id %}
+          {% if items %}
+            <div id="cat-{{ cat.id }}" class="category-block">
+              <div class="category-section-title">
+                {{ cat.name }}
+              </div>
+              <div class="row g-3">
+                {% for it in items %}
+                  <div class="col-6 col-md-4">
+                    <div class="card item-card shadow-sm border-0">
+                      {% if it.image and it.image.file %}
+                        <img src="{{ it.image.file.url }}" alt="{{ it.name }}" class="item-card-img">
+                      {% endif %}
+                      <div class="card-body item-card-body">
+                        <h6 class="card-title mb-1">{{ it.name }}</h6>
+                        {% if it.description %}
+                          <p class="small text-muted mb-1">{{ it.description|truncatechars:60 }}</p>
+                        {% endif %}
+                        {% if it.price %}
+                          <div class="item-price mb-2">₹ {{ it.price|floatformat:2 }}</div>
+                        {% endif %}
+                        <button type="button"
+                                class="btn btn-sm btn-outline-primary mt-auto w-100 btn-request-service"
+                                data-item-id="{{ it.id }}"
+                                data-item-name="{{ it.name }}">
+                          Request now
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% endif %}
+        {% endwith %}
+      {% endfor %}
+    {% else %}
+      <p class="text-muted mt-3">No services configured yet.</p>
+    {% endif %}
+  </div>
+
+</div> <!-- /guest-shell -->
+
+<!-- Mini cart bar (bottom) -->
+<div id="mini-cart-bar" class="mini-cart-bar" style="display:none;">
+  <div class="container">
+    <div class="mini-cart-inner">
+      <div class="mini-cart-summary">
+        <span id="mini-cart-count">0</span> item(s) ·
+        <strong>₹ <span id="mini-cart-total">0.00</span></strong>
+      </div>
+      <button type="button" class="btn btn-sm btn-warning" id="btn-view-cart">
+        View cart
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Bottom category bars -->
+<div class="category-bar-wrap">
+  <div class="container">
+    <!-- FOOD category bar -->
+    <div id="category-bar-food" class="category-bar-inner">
+      <div class="d-flex flex-row gap-2">
+        {% for cat in food_categories %}
+          {% with items=items_by_cat|get_item:cat.id %}
+            {% if items %}
+              <button type="button"
+                      class="category-chip{% if forloop.first %} active-chip{% endif %}"
+                      data-cat-id="{{ cat.id }}">
+                {% if cat.icon %}
+                  <img src="{{ cat.icon.url }}" alt="{{ cat.name }}" class="cat-icon-img">
+                {% else %}
+                  <span class="cat-icon-placeholder">
+                    {{ cat.name|slice:":1" }}
+                  </span>
+                {% endif %}
+                <span>{{ cat.name }}</span>
+              </button>
+            {% endif %}
+          {% endwith %}
+        {% empty %}
+          <span class="text-muted small">No food categories.</span>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- SERVICE category bar -->
+    <div id="category-bar-service" class="category-bar-inner" style="display:none;">
+      <div class="d-flex flex-row gap-2">
+        {% for cat in service_categories %}
+          {% with items=items_by_cat|get_item:cat.id %}
+            {% if items %}
+              <button type="button"
+                      class="category-chip{% if forloop.first %} active-chip{% endif %}"
+                      data-cat-id="{{ cat.id }}">
+                {% if cat.icon %}
+                  <img src="{{ cat.icon.url }}" alt="{{ cat.name }}" class="cat-icon-img">
+                {% else %}
+                  <span class="cat-icon-placeholder">
+                    {{ cat.name|slice:":1" }}
+                  </span>
+                {% endif %}
+                <span>{{ cat.name }}</span>
+              </button>
+            {% endif %}
+          {% endwith %}
+        {% empty %}
+          <span class="text-muted small">No services.</span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Cart Modal -->
+<div class="modal fade" id="cartModal" tabindex="-1" aria-labelledby="cartModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title" id="cartModalLabel">Your cart</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div id="cart-body">
+          <!-- cart fragment will load here -->
+          <div class="text-muted">Your cart is empty.</div>
+        </div>
+
+        <hr>
+        <label for="order-note" class="cart-note-label mb-1">
+          Note for kitchen / staff (optional)
+        </label>
+        <textarea id="order-note" class="form-control form-control-sm mb-2"
+                  rows="2" placeholder="Example: Less spicy, no onion, etc."></textarea>
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-success btn-sm" id="btn-submit-order">
+          Place food order
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Service note modal -->
+<div class="modal fade" id="serviceNoteModal" tabindex="-1" aria-labelledby="serviceNoteLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title" id="serviceNoteLabel">Service request</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small mb-2" id="serviceItemName"></p>
+        <label for="service-note" class="cart-note-label mb-1">
+          Note for staff (optional)
+        </label>
+        <textarea id="service-note" class="form-control form-control-sm"
+                  rows="3" placeholder="Example: Please clean room, bring 2 towels, etc."></textarea>
+        <input type="hidden" id="service-item-id">
+      </div>
+      <div class="modal-footer py-2">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-send-service">
+          Send request
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- My services modal -->
+<div class="modal fade" id="myServicesModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header py-2">
+        <h6 class="modal-title">My orders & services</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="my-services-body">
+        <div class="text-muted small">Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+
+    // --- CSRF helper ---
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== "") {
+        const cookies = document.cookie.split(";");
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + "=")) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+    const csrftoken = getCookie("csrftoken");
+
+    // Flags from backend
+    const NEEDS_PHONE    = {% if needs_phone %}true{% else %}false{% endif %};
+    let   PHONE_VERIFIED = {% if phone_verified %}true{% else %}false{% endif %};
+
+    const urls = {
+      cart_view:   "{% url 'cart_view' hotel.id room.id %}",
+      cart_add:    "{% url 'cart_add' hotel.id room.id %}",
+      cart_update: "{% url 'cart_update' hotel.id room.id %}",
+      cart_clear:  "{% url 'cart_clear' hotel.id room.id %}",
+      submit_food: "{% url 'order_submit_stub' hotel.id room.id %}",
+      svc_request: "{% url 'service_request' hotel.id room.id %}",
+      verify:      "{% url 'verify_phone' hotel.id room.id %}",
+      summary:     "{% url 'guest_summary' hotel.id room.id %}",
+    };
+
+    const modeFoodCard    = document.getElementById("mode-food-card");
+    const modeServiceCard = document.getElementById("mode-service-card");
+    const sectionFood     = document.getElementById("section-food");
+    const sectionService  = document.getElementById("section-service");
+    const barFood         = document.getElementById("category-bar-food");
+    const barService      = document.getElementById("category-bar-service");
+
+    const miniCartBar     = document.getElementById("mini-cart-bar");
+    const miniCartCount   = document.getElementById("mini-cart-count");
+    const miniCartTotal   = document.getElementById("mini-cart-total");
+    const btnViewCart     = document.getElementById("btn-view-cart");
+
+    const cartBody        = document.getElementById("cart-body");
+    const orderNote       = document.getElementById("order-note");
+    const btnSubmitOrder  = document.getElementById("btn-submit-order");
+
+    // Cart modal
+    const cartModalEl = document.getElementById("cartModal");
+    const cartModal   = cartModalEl && window.bootstrap ? new bootstrap.Modal(cartModalEl) : null;
+
+    // Service modal refs
+    const serviceNoteModalEl = document.getElementById("serviceNoteModal");
+    const serviceItemNameEl  = document.getElementById("serviceItemName");
+    const serviceNoteEl      = document.getElementById("service-note");
+    const serviceItemIdEl    = document.getElementById("service-item-id");
+    const btnSendService     = document.getElementById("btn-send-service");
+    const serviceModal       = serviceNoteModalEl && window.bootstrap ? new bootstrap.Modal(serviceNoteModalEl) : null;
+
+    // Phone modal refs
+    const phoneModalEl   = document.getElementById("phoneModal");
+    const phoneInput     = document.getElementById("phoneInput");
+    const phoneErr       = document.getElementById("phoneErr");
+    const phoneVerifyBtn = document.getElementById("phoneVerifyBtn");
+    const phoneCloseBtn  = document.getElementById("phoneCloseBtn");
+    const phoneModal     = phoneModalEl && window.bootstrap ? new bootstrap.Modal(phoneModalEl) : null;
+
+    // My services modal
+    const btnMyServices   = document.getElementById("btn-my-services");
+    const myServicesModalEl = document.getElementById("myServicesModal");
+    const myServicesBody  = document.getElementById("my-services-body");
+    const myServicesModal = myServicesModalEl && window.bootstrap ? new bootstrap.Modal(myServicesModalEl) : null;
+
+    // Lock/unlock all interactive buttons when phone not verified
+    function setLockedUI(locked) {
+      const sel = ".btn-add-to-cart, .qty-btn, #btn-submit-order, .btn-request-service, #btn-view-cart, #btn-send-service";
+      document.querySelectorAll(sel).forEach((b) => {
+        if (locked) {
+          b.setAttribute("disabled", "disabled");
+          b.dataset.locked = "1";
+        } else if (b.dataset.locked === "1") {
+          b.removeAttribute("disabled");
+          delete b.dataset.locked;
+        }
+      });
+    }
+
+    // guardedFetch → if PHONE_REQUIRED, show modal and lock UI
+    async function guardedFetch(url, options) {
+      const resp = await fetch(url, options);
+      if (resp.status === 403) {
+        let j = null;
+        try { j = await resp.clone().json(); } catch (e) {}
+        if (j && j.error === "PHONE_REQUIRED") {
+          setLockedUI(true);
+          if (phoneCloseBtn) phoneCloseBtn.classList.add("d-none");
+          if (phoneModal) phoneModal.show();
+        }
+        throw new Error("PHONE_REQUIRED");
+      }
+      return resp;
+    }
+
+    function updateMiniCart(countStr, html) {
+      const count = parseInt(countStr || "0", 10) || 0;
+      miniCartCount.textContent = count.toString();
+
+      let total = "0.00";
+      if (html) {
+        const match = html.match(/Total<\/strong>\s*<strong>₹\s*([\d.,]+)/);
+        if (match && match[1]) {
+          total = match[1];
+        }
+      }
+      miniCartTotal.textContent = total;
+
+      if (count > 0) {
+        miniCartBar.style.display = "";
+      } else {
+        miniCartBar.style.display = "none";
+      }
+    }
+
+    function setMode(mode) {
+      if (mode === "SERVICE") {
+        modeFoodCard.classList.remove("active");
+        modeServiceCard.classList.add("active");
+        sectionFood.style.display    = "none";
+        sectionService.style.display = "";
+        if (barFood) barFood.style.display = "none";
+        if (barService) barService.style.display = "";
+      } else {
+        modeFoodCard.classList.add("active");
+        modeServiceCard.classList.remove("active");
+        sectionFood.style.display    = "";
+        sectionService.style.display = "none";
+        if (barFood) barFood.style.display = "";
+        if (barService) barService.style.display = "none";
+      }
+    }
+
+    // Ensure phone is verified before any interactive action
+    function requirePhoneBeforeAction() {
+      if (PHONE_VERIFIED) {
+        return true;
+      }
+      // reset previous errors
+      if (phoneErr) {
+        phoneErr.textContent = "";
+        phoneErr.style.display = "none";
+      }
+      setLockedUI(true);
+      if (phoneCloseBtn) phoneCloseBtn.classList.add("d-none");
+      if (phoneModal) phoneModal.show();
+      return false;
+    }
+
+    // Initial mode + phone gate (always gate until verified)
+    if (!PHONE_VERIFIED) {
+      setLockedUI(true);
+      if (phoneModal) phoneModal.show();
+    } else {
+      setLockedUI(false);
+    }
+    setMode("FOOD");
+
+    // Phone verify
+    if (phoneVerifyBtn) {
+      phoneVerifyBtn.addEventListener("click", async () => {
+        const phone = (phoneInput.value || "").trim();
+        phoneErr.style.display = "none";
+        phoneErr.textContent = "";
+
+        if (!phone) {
+          phoneErr.textContent = "Please enter phone number.";
+          phoneErr.style.display = "block";
+          return;
+        }
+
+        try {
+          const resp = await fetch(urls.verify, {
+            method: "POST",
+            headers: {
+              "X-CSRFToken": csrftoken,
+              "X-Requested-With": "XMLHttpRequest",
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({ phone }),
+          });
+          const data = await resp.json();
+          if (!data.ok) {
+            let msg = "Phone not recognised or no active stay for this room. Please check with reception.";
+            if (data.error === "NO_STAY") {
+              msg = "No active stay found for this room. Please confirm at reception.";
+            } else if (data.error === "MISMATCH") {
+              msg = "Phone number does not match the one given at check-in. Please confirm with reception.";
+            }
+            phoneErr.textContent = msg;
+            phoneErr.style.display = "block";
+            return;
+          }
+          PHONE_VERIFIED = true;
+          setLockedUI(false);
+          if (phoneCloseBtn) phoneCloseBtn.classList.remove("d-none");
+          if (phoneModal) phoneModal.hide();
+          location.reload();
+        } catch (e) {
+          phoneErr.textContent = "Error while verifying. Please try again.";
+          phoneErr.style.display = "block";
+        }
+      });
+    }
+
+    // Mode toggle
+    modeFoodCard.addEventListener("click", () => setMode("FOOD"));
+    modeServiceCard.addEventListener("click", () => setMode("SERVICE"));
+
+    // Category chips scroll
+    function handleCategoryClick(ev) {
+      const chip = ev.currentTarget;
+      const catId = chip.getAttribute("data-cat-id");
+      if (!catId) return;
+      const target = document.getElementById("cat-" + catId);
+      if (!target) return;
+
+      // activate chip in its bar
+      const siblingChips = chip.closest(".category-bar-inner").querySelectorAll(".category-chip");
+      siblingChips.forEach(c => c.classList.remove("active-chip"));
+      chip.classList.add("active-chip");
+
+      const rect = target.getBoundingClientRect();
+      const offset = window.pageYOffset || document.documentElement.scrollTop;
+      const top = rect.top + offset - 90; // adjust for header
+      window.scrollTo({ top, behavior: "smooth" });
+    }
+
+    document.querySelectorAll("#category-bar-food .category-chip").forEach(chip => {
+      chip.addEventListener("click", handleCategoryClick);
+    });
+    document.querySelectorAll("#category-bar-service .category-chip").forEach(chip => {
+      chip.addEventListener("click", handleCategoryClick);
+    });
+
+    // Add to cart from food cards
+    document.body.addEventListener("click", async (ev) => {
+      const btn = ev.target.closest(".btn-add-to-cart");
+      if (!btn) return;
+
+      const itemId = btn.getAttribute("data-item-id");
+      if (!itemId) return;
+
+      if (!requirePhoneBeforeAction()) return;
+
+      try {
+        const resp = await guardedFetch(urls.cart_add, {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": csrftoken,
+            "X-Requested-With": "XMLHttpRequest",
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({ item_id: itemId, qty: "1" }),
+        });
+        const html = await resp.text();
+        cartBody.innerHTML = html;
+        const count = resp.headers.get("X-Cart-Count") || "0";
+        updateMiniCart(count, html);
+      } catch (e) {
+        if (e.message !== "PHONE_REQUIRED") {
+          alert("Could not add to cart. Please try again.");
+        }
+      }
+    });
+
+    // Open cart modal from mini bar
+    if (btnViewCart && cartModal) {
+      btnViewCart.addEventListener("click", async () => {
+        if (!requirePhoneBeforeAction()) return;
+        try {
+          const resp = await guardedFetch(urls.cart_view, { method: "GET" });
+          const html = await resp.text();
+          cartBody.innerHTML = html;
+          const count = resp.headers.get("X-Cart-Count") || "0";
+          updateMiniCart(count, html);
+          cartModal.show();
+        } catch (e) {
+          if (e.message !== "PHONE_REQUIRED") {
+            alert("Could not load cart. Please try again.");
+          }
+        }
+      });
+    }
+
+    // Update qty / remove from cart (inside modal)
+    cartBody.addEventListener("click", async (ev) => {
+      const btn = ev.target.closest(".qty-btn");
+      if (!btn) return;
+
+      const itemId = btn.getAttribute("data-id");
+      const delta  = parseInt(btn.getAttribute("data-d") || "0", 10);
+      if (!itemId || !delta) return;
+
+      const row = btn.closest("[data-item-row]");
+      const qtySpan = row ? row.querySelector("[data-qty]") : null;
+      let qty = parseInt(qtySpan ? qtySpan.textContent : "1", 10) || 1;
+      qty = qty + delta;
+      if (qty < 0) qty = 0;
+
+      try {
+        const resp = await guardedFetch(urls.cart_update, {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": csrftoken,
+            "X-Requested-With": "XMLHttpRequest",
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({ item_id: itemId, qty: String(qty) }),
+        });
+        const html = await resp.text();
+        cartBody.innerHTML = html;
+        const count = resp.headers.get("X-Cart-Count") || "0";
+        updateMiniCart(count, html);
+      } catch (e) {
+        if (e.message !== "PHONE_REQUIRED") {
+          alert("Could not update cart. Please try again.");
+        }
+      }
+    });
+
+    // Submit food order
+    if (btnSubmitOrder) {
+      btnSubmitOrder.addEventListener("click", async () => {
+        if (!requirePhoneBeforeAction()) return;
+        const note = (orderNote.value || "").trim();
+        try {
+          const resp = await guardedFetch(urls.submit_food, {
+            method: "POST",
+            headers: {
+              "X-CSRFToken": csrftoken,
+              "X-Requested-With": "XMLHttpRequest",
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({ note }),
+          });
+          const data = await resp.json();
+          if (data.ok) {
+            alert("Order placed successfully!");
+            orderNote.value = "";
+            if (cartModal) cartModal.hide();
+            updateMiniCart("0", "");
+            cartBody.innerHTML = '<div class="text-muted">Your cart is empty.</div>';
+          } else {
+            alert("Could not place order: " + (data.error || "Unknown error"));
+          }
+        } catch (e) {
+          if (e.message !== "PHONE_REQUIRED") {
+            alert("Error while placing order. Please try again.");
+          }
+        }
+      });
+    }
+
+    // Service request flow
+    document.body.addEventListener("click", (ev) => {
+      const btn = ev.target.closest(".btn-request-service");
+      if (!btn) return;
+
+      if (!requirePhoneBeforeAction()) return;
+
+      const itemId = btn.getAttribute("data-item-id");
+      const name   = btn.getAttribute("data-item-name") || "";
+      if (!itemId || !serviceModal) return;
+
+      serviceItemIdEl.value      = itemId;
+      serviceItemNameEl.textContent = name;
+      serviceNoteEl.value        = "";
+      serviceModal.show();
+    });
+
+    if (btnSendService && serviceModal) {
+      btnSendService.addEventListener("click", async () => {
+        if (!requirePhoneBeforeAction()) return;
+        const itemId = serviceItemIdEl.value;
+        const note   = (serviceNoteEl.value || "").trim();
+        if (!itemId) return;
+        try {
+          const resp = await guardedFetch(urls.svc_request, {
+            method: "POST",
+            headers: {
+              "X-CSRFToken": csrftoken,
+              "X-Requested-With": "XMLHttpRequest",
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({ item_id: itemId, note }),
+          });
+          const data = await resp.json();
+          if (data.ok) {
+            alert("Service request sent!");
+            serviceModal.hide();
+          } else if (data.error === "already_requested") {
+            alert("This service is already requested and in progress.");
+          } else {
+            alert("Could not send request: " + (data.error || "Unknown error"));
+          }
+        } catch (e) {
+          if (e.message !== "PHONE_REQUIRED") {
+            alert("Error while sending service request.");
+          }
+        }
+      });
+    }
+
+    // My services (summary) modal
+    if (btnMyServices && myServicesModal) {
+      btnMyServices.addEventListener("click", async () => {
+        if (!requirePhoneBeforeAction()) return;
+        myServicesBody.innerHTML = '<div class="text-muted small">Loading…</div>';
+        myServicesModal.show();
+        try {
+          const resp = await guardedFetch(urls.summary, { method: "GET" });
+          const data = await resp.json();
+          if (!data.ok) {
+            myServicesBody.innerHTML = '<div class="text-danger small">Could not load summary.</div>';
+            return;
+          }
+          let html = "";
+          if (data.food && data.food.length) {
+            html += '<h6 class="mb-2">Food orders</h6><ul class="list-group mb-3">';
+            data.food.forEach(row => {
+              html += `
+                <li class="list-group-item py-2">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <span class="small">Order #${row.request_id}</span>
+                    <span class="badge bg-secondary">${row.status}</span>
+                  </div>
+                </li>`;
+            });
+            html += "</ul>";
+          }
+          if (data.services && data.services.length) {
+            html += '<h6 class="mb-2">Service requests</h6><ul class="list-group mb-1">';
+            data.services.forEach(row => {
+              html += `
+                <li class="list-group-item py-2">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <span class="small">${row.name}</span>
+                    <span class="badge bg-secondary">${row.status}</span>
+                  </div>
+                </li>`;
+            });
+            html += "</ul>";
+          }
+          if (!html) {
+            html = '<div class="text-muted small">No recent orders or services.</div>';
+          }
+          myServicesBody.innerHTML = html;
+        } catch (e) {
+          if (e.message !== "PHONE_REQUIRED") {
+            myServicesBody.innerHTML = '<div class="text-danger small">Error loading summary.</div>';
+          }
+        }
+      });
+    }
+
+  });
+</script>
+
+<!-- ONLY scroll-sync code added on top of Version A -->
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const sectionFood    = document.getElementById("section-food");
+    const sectionService = document.getElementById("section-service");
+    const barFood        = document.getElementById("category-bar-food");
+    const barService     = document.getElementById("category-bar-service");
+    const modeFoodCard   = document.getElementById("mode-food-card");
+    const modeServiceCard= document.getElementById("mode-service-card");
+
+    if (!sectionFood || !sectionService || !barFood || !barService) {
+      return;
+    }
+
+    function getCurrentMode() {
+      const foodVisible = window.getComputedStyle(sectionFood).display !== "none";
+      if (foodVisible) return "FOOD";
+      const serviceVisible = window.getComputedStyle(sectionService).display !== "none";
+      if (serviceVisible) return "SERVICE";
+      if (modeServiceCard.classList.contains("active")) return "SERVICE";
+      return "FOOD";
+    }
+
+    function findCurrentCategoryId(sectionEl) {
+      if (!sectionEl) return null;
+      const blocks = sectionEl.querySelectorAll(".category-block");
+      if (!blocks.length) return null;
+
+      const threshold = 130; // px from top of viewport
+      let bestId = null;
+      let bestDist = Infinity;
+
+      blocks.forEach((block) => {
+        const rect = block.getBoundingClientRect();
+        const top = rect.top;
+        if (top <= threshold && top >= 0) {
+          const dist = threshold - top;
+          if (dist < bestDist) {
+            bestDist = dist;
+            bestId = block.id.replace("cat-", "");
+          }
+        }
+      });
+
+      if (!bestId) {
+        let firstBelow = null;
+        let minPos = Infinity;
+        blocks.forEach((block) => {
+          const rect = block.getBoundingClientRect();
+          if (rect.top > threshold && rect.top < minPos) {
+            minPos = rect.top;
+            firstBelow = block;
+          }
+        });
+        if (firstBelow) {
+          bestId = firstBelow.id.replace("cat-", "");
+        } else {
+          bestId = blocks[0].id.replace("cat-", "");
+        }
+      }
+
+      return bestId;
+    }
+
+    function centerActiveChip(barEl) {
+      if (!barEl) return;
+      const activeChip = barEl.querySelector(".category-chip.active-chip");
+      if (!activeChip) return;
+      const barRect = barEl.getBoundingClientRect();
+      const chipRect = activeChip.getBoundingClientRect();
+      const barCenter = (barRect.left + barRect.right) / 2;
+      const chipCenter = (chipRect.left + chipRect.right) / 2;
+      const delta = chipCenter - barCenter;
+      barEl.scrollBy({
+        left: delta,
+        behavior: "smooth",
+      });
+    }
+
+    function updateActiveChipOnScroll() {
+      const mode = getCurrentMode();
+      if (mode === "SERVICE") {
+        const id = findCurrentCategoryId(sectionService);
+        if (!id) return;
+        barService.querySelectorAll(".category-chip").forEach((chip) => {
+          chip.classList.toggle("active-chip", chip.dataset.catId === id);
+        });
+        centerActiveChip(barService);
+      } else {
+        const id = findCurrentCategoryId(sectionFood);
+        if (!id) return;
+        barFood.querySelectorAll(".category-chip").forEach((chip) => {
+          chip.classList.toggle("active-chip", chip.dataset.catId === id);
+        });
+        centerActiveChip(barFood);
+      }
+    }
+
+    function throttle(fn, wait) {
+      let last = 0;
+      return function () {
+        const now = Date.now();
+        if (now - last >= wait) {
+          last = now;
+          fn.apply(this, arguments);
+        }
+      };
+    }
+
+    window.addEventListener("scroll", throttle(updateActiveChipOnScroll, 120));
+
+    modeFoodCard.addEventListener("click", function () {
+      setTimeout(updateActiveChipOnScroll, 150);
+    });
+    modeServiceCard.addEventListener("click", function () {
+      setTimeout(updateActiveChipOnScroll, 150);
+    });
+
+    // Initial sync
+    updateActiveChipOnScroll();
+  });
+</script>
+
+{% endblock %}

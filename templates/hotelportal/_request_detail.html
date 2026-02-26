@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Request #{{ r.id }} — Room {{ r.room.number }}{% endblock %}
+
+{% block content %}
+<style>
+  /* Print-friendly: hide controls, tighten spacing */
+  @media print {
+    .no-print { display: none !important; }
+    .card, .table, .badge { box-shadow: none !important; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .container, .container-fluid { width: 100% !important; max-width: none !important; }
+  }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h3 class="mb-1">Request #{{ r.id }} — Room {{ r.room.number }}</h3>
+    <div class="small text-muted">
+      {% if r.kind == "FOOD" %}
+        <span class="badge text-bg-primary">FOOD</span>
+      {% else %}
+        <span class="badge text-bg-info">SERVICE</span>
+      {% endif %}
+      {% if r.status == "NEW" %}
+        <span class="badge text-bg-secondary ms-1">NEW</span>
+      {% elif r.status == "ACCEPTED" %}
+        <span class="badge text-bg-warning ms-1">ACCEPTED</span>
+      {% elif r.status == "COMPLETED" %}
+        <span class="badge text-bg-success ms-1">COMPLETED</span>
+      {% else %}
+        <span class="badge text-bg-dark ms-1">CANCELLED</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- No "Back" in popup; just Print and Print slip -->
+  <div class="d-flex gap-2 no-print">
+    <a
+      class="btn btn-outline-primary btn-sm"
+      href="{% url 'portal_request_detail' r.id %}?print=slip"
+      target="_blank" rel="noopener"
+    >Print slip</a>
+    <button class="btn btn-primary btn-sm" onclick="window.print()">Print</button>
+    
+  </div>
+  
+</div>
+
+<div class="row g-3">
+  <!-- Left: guest & meta -->
+  <div class="col-12 col-lg-4">
+    <div class="card">
+      <div class="card-header bg-light">Guest & Room</div>
+      <div class="card-body">
+        <dl class="row mb-0 small">
+          <dt class="col-5">Room</dt><dd class="col-7">#{{ r.room.number }}</dd>
+
+          <dt class="col-5">Guest</dt>
+          <dd class="col-7">
+            {% if r.stay and r.stay.guest_name %}
+              {{ r.stay.guest_name }}
+            {% else %}
+              —
+            {% endif %}
+          </dd>
+
+          <dt class="col-5">Phone</dt>
+          <dd class="col-7">
+            {% if r.stay and r.stay.phone %}
+              {{ r.stay.phone }}
+            {% else %}
+              —
+            {% endif %}
+          </dd>
+
+          <dt class="col-5">Created</dt><dd class="col-7">{{ r.created_at|date:"d M Y, H:i" }}</dd>
+          {% if r.accepted_at %}<dt class="col-5">Accepted</dt><dd class="col-7">{{ r.accepted_at|date:"d M Y, H:i" }}</dd>{% endif %}
+          {% if r.completed_at %}<dt class="col-5">Completed</dt><dd class="col-7">{{ r.completed_at|date:"d M Y, H:i" }}</dd>{% endif %}
+          {% if r.cancelled_at %}<dt class="col-5">Cancelled</dt><dd class="col-7">{{ r.cancelled_at|date:"d M Y, H:i" }}</dd>{% endif %}
+        </dl>
+      </div>
+    </div>
+
+    {% if r.note %}
+    <div class="card mt-3">
+      <div class="card-header bg-light">Guest note</div>
+      <div class="card-body">
+        <div class="border rounded p-2 small" style="white-space:pre-wrap">{{ r.note }}</div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Right: request content -->
+  <div class="col-12 col-lg-8">
+    {% if r.kind == "FOOD" %}
+      <div class="card">
+        <div class="card-header bg-light">Items</div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-sm align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Item</th>
+                  <th class="text-end">Qty</th>
+                  <th class="text-end">Line Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for ln in r.lines.all %}
+                  <tr>
+                    <td>{{ ln.name_snapshot }}</td>
+                    <td class="text-end">{{ ln.qty }}</td>
+                    <td class="text-end">₹ {{ ln.line_total }}</td>
+                  </tr>
+                {% empty %}
+                  <tr><td colspan="3" class="text-muted">No lines.</td></tr>
+                {% endfor %}
+              </tbody>
+              <tfoot class="table-light">
+                <tr>
+                  <th colspan="2" class="text-end">Subtotal</th>
+                  <th class="text-end">₹ {{ r.subtotal }}</th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="card">
+        <div class="card-header bg-light">Service</div>
+        <div class="card-body">
+          <div class="border rounded p-2">
+            {% if r.service_item %}<strong>{{ r.service_item.name }}</strong>{% endif %}
+            {% if r.note %}{% if r.service_item %} — {% endif %}{{ r.note }}{% endif %}
+            {% if not r.service_item and not r.note %}Request{% endif %}
+          </div>
+
+          {% if r.subtotal %}
+          <div class="d-flex justify-content-between mt-2">
+            <strong>Amount</strong>
+            <strong>₹ {{ r.subtotal }}</strong>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

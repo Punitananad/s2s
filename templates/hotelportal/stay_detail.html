@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}Stay #{{ stay.id }} — Room {{ room.number }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <div>
+    <h3 class="mb-1">Stay — Room {{ room.number }}</h3>
+    <div class="small text-muted">
+      Guest: {{ stay.guest_name|default:"—" }}{% if stay.phone %} · {{ stay.phone }}{% endif %}
+    </div>
+    <div class="small text-muted">
+      Check-in:
+      {% if stay.check_in_at %}
+        {{ stay.check_in_at|date:"d M Y, H:i" }}
+      {% endif %}
+      {% if stay.check_out_at %}
+        · Checkout: {{ stay.check_out_at|date:"d M Y, H:i" }}
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="text-end">
+    <!-- Totals excluding cancelled -->
+    <div class="small">Food: <strong>₹ {{ food_total }}</strong></div>
+    <div class="small">Service: <strong>₹ {{ svc_total }}</strong></div>
+    <div class="small border-top mt-1 pt-1">Grand total: <strong>₹ {{ grand_total }}</strong></div>
+
+    <!-- Paid vs due -->
+    <div class="small text-muted mt-1">
+      Paid: <strong>₹ {{ paid_total }}</strong> ·
+      Due: <strong>₹ {{ unpaid_total }}</strong>
+    </div>
+
+    <div class="mt-2">
+      {% if unpaid_total > 0 %}
+        {# There is something due → show Mark Paid form #}
+        <form method="post" action="{% url 'portal_stay_mark_paid' stay.id %}" class="d-flex align-items-center gap-2">
+          {% csrf_token %}
+          <select name="payment_mode" class="form-select form-select-sm">
+            <option value="">Select mode</option>
+            <option value="CASH">Cash</option>
+            <option value="UPI">UPI</option>
+            <option value="CARD">Card</option>
+            <option value="ROOM">Room Charge</option>
+            <option value="OTHER">Other</option>
+          </select>
+          <button class="btn btn-sm btn-success">Mark Paid</button>
+        </form>
+      {% else %}
+        {# Nothing due right now #}
+        <span class="badge text-bg-success">Paid</span>
+        {% if stay.payment_mode %}
+          <span class="badge text-bg-light text-dark">Mode: {{ stay.payment_mode }}</span>
+        {% endif %}
+      {% endif %}
+    </div>
+
+    <div class="d-flex gap-2 mt-2">
+      <a class="btn btn-sm btn-outline-secondary"
+         href="{% url 'portal_stays_history' %}">Back to Stays</a>
+      <a class="btn btn-sm btn-primary"
+         href="{% url 'portal_stay_print' %}?stay_id={{ stay.id }}" target="_blank">Print slip</a>
+      {% if not stay.check_out_at %}
+        <form method="post" action="{% url 'portal_stay_checkout_confirm' %}" style="display:inline;">
+          {% csrf_token %}
+          <input type="hidden" name="stay_id" value="{{ stay.id }}">
+          <button class="btn btn-sm btn-warning">Checkout</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% if requests %}
+  <div class="list-group">
+    {% for r in requests %}
+      <div class="list-group-item">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="small text-muted">#{{ r.id }} · {{ r.created_at|date:"d M Y, H:i" }}</div>
+            <div class="d-flex align-items-center gap-2">
+              {% if r.kind == "FOOD" %}
+                <span class="badge text-bg-primary">FOOD</span>
+              {% else %}
+                <span class="badge text-bg-info">SERVICE</span>
+              {% endif %}
+
+              {# Status badge #}
+              {% if r.status == "NEW" %}
+                <span class="badge text-bg-secondary">NEW</span>
+              {% elif r.status == "ACCEPTED" %}
+                <span class="badge text-bg-warning">ACCEPTED</span>
+              {% elif r.status == "COMPLETED" %}
+                <span class="badge text-bg-success">COMPLETED</span>
+              {% else %}
+                <span class="badge text-bg-dark">CANCELLED</span>
+              {% endif %}
+
+              {# PAID / UNPAID badge only for non-cancelled #}
+              {% if r.status != "CANCELLED" %}
+                {% if r.is_paid %}
+                  <span class="badge text-bg-success">PAID</span>
+                {% else %}
+                  <span class="badge text-bg-danger">UNPAID</span>
+                {% endif %}
+              {% endif %}
+            </div>
+          </div>
+          <div class="text-end">
+            {% if r.subtotal and r.status != "CANCELLED" %}
+              <div class="fw-semibold">₹ {{ r.subtotal }}</div>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if r.kind == "FOOD" %}
+          {% if r.lines.all %}
+            <ul class="small mt-2 mb-0 ps-3">
+              {% for ln in r.lines.all %}
+                <li>{{ ln.name_snapshot }} × {{ ln.qty }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+          {% if r.note %}
+            <div class="small text-muted mt-1">
+              <em>Note:</em> {{ r.note }}
+            </div>
+          {% endif %}
+        {% else %}
+          <div class="small mt-2">
+            <strong>{% if r.service_item %}{{ r.service_item.name }}{% else %}Service{% endif %}</strong>
+            {% if r.note %} — {{ r.note }}{% endif %}
+          </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="text-muted">No requests in this stay.</div>
+{% endif %}
+{% endblock %}

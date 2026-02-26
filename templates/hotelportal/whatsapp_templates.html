@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}WhatsApp Templates{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+  <h3 class="mb-3">WhatsApp Templates</h3>
+  <p class="text-muted small mb-4">
+    These templates are used when sending WhatsApp messages from the Live Board.
+    You can use placeholders:
+    <code>{guest_name}</code>,
+    <code>{room_number}</code>,
+    <code>{hotel_name}</code>,
+    <code>{tracking_url}</code>,
+    <code>{request_id}</code>.
+  </p>
+
+  {% if messages %}
+    {% for m in messages %}
+      <div class="alert alert-{{ m.tags }} py-2">{{ m }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- Add new template -->
+  <div class="card mb-4">
+    <div class="card-header">Add new template</div>
+    <div class="card-body">
+      <form method="post" class="row g-2">
+        {% csrf_token %}
+        <input type="hidden" name="mode" value="save">
+        <div class="col-12 col-md-3">
+          <label class="form-label small">Code (internal)</label>
+          <input name="code" class="form-control form-control-sm" placeholder="accepted_std">
+        </div>
+        <div class="col-12 col-md-3">
+          <label class="form-label small">Label</label>
+          <input name="label" class="form-control form-control-sm" placeholder="Accepted – Standard">
+        </div>
+        <div class="col-12 col-md-2">
+          <label class="form-label small">Type</label>
+          <select name="type" class="form-select form-select-sm">
+            <option value="GENERIC">Generic / Manual</option>
+            <option value="ACCEPTED">Request Accepted</option>
+            <option value="REJECTED">Request Rejected</option>
+            <option value="COMPLETED">Request Completed</option>
+            <option value="CHECKIN">Check-in / Welcome</option>
+            <option value="CHECKOUT">Checkout / Goodbye</option>
+          </select>
+        </div>
+        <div class="col-6 col-md-2">
+          <label class="form-label small">Sort order</label>
+          <input name="sort_order" type="number" value="0" class="form-control form-control-sm">
+        </div>
+        <div class="col-12">
+          <label class="form-label small">Body</label>
+          <textarea name="body" rows="3" class="form-control form-control-sm"
+            placeholder="Hi {guest_name}, your request #{request_id} is accepted. Track: {tracking_url}"></textarea>
+        </div>
+        <div class="col-12 text-end">
+          <button class="btn btn-primary btn-sm mt-2">Save template</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Existing templates -->
+  <div class="card">
+    <div class="card-header">Existing templates</div>
+    <div class="card-body">
+      {% if templates %}
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Code</th>
+                <th>Label</th>
+                <th>Type</th>
+                <th>Sort</th>
+                <th>Active</th>
+                <th style="width: 40%">Body</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in templates %}
+                <tr>
+                  <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="mode" value="save">
+                    <input type="hidden" name="tmpl_id" value="{{ t.id }}">
+
+                    <td>{{ t.id }}</td>
+                    <td>
+                      <input name="code" value="{{ t.code }}" class="form-control form-control-sm">
+                    </td>
+                    <td>
+                      <input name="label" value="{{ t.label }}" class="form-control form-control-sm">
+                    </td>
+                    <td>
+                      <select name="type" class="form-select form-select-sm">
+                        <option value="GENERIC" {% if t.type == "GENERIC" %}selected{% endif %}>Generic</option>
+                        <option value="ACCEPTED" {% if t.type == "ACCEPTED" %}selected{% endif %}>Accepted</option>
+                        <option value="REJECTED" {% if t.type == "REJECTED" %}selected{% endif %}>Rejected</option>
+                        <option value="COMPLETED" {% if t.type == "COMPLETED" %}selected{% endif %}>Completed</option>
+                        <option value="CHECKIN" {% if t.type == "CHECKIN" %}selected{% endif %}>Check-in</option>
+                        <option value="CHECKOUT" {% if t.type == "CHECKOUT" %}selected{% endif %}>Checkout</option>
+                      </select>
+                    </td>
+                    <td style="max-width:80px;">
+                      <input name="sort_order" type="number"
+                             value="{{ t.sort_order }}" class="form-control form-control-sm">
+                    </td>
+                    <td>
+                      {% if t.is_active %}
+                        <span class="badge bg-success">Yes</span>
+                      {% else %}
+                        <span class="badge bg-secondary">No</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      <textarea name="body" rows="3" class="form-control form-control-sm">{{ t.body }}</textarea>
+                    </td>
+                    <td class="text-end">
+                      <button class="btn btn-sm btn-primary mb-1">Save</button>
+                  </form>
+                      <form method="post"
+                            onsubmit="return confirm('Disable this template?');">
+                        {% csrf_token %}
+                        <input type="hidden" name="mode" value="delete">
+                        <input type="hidden" name="tmpl_id" value="{{ t.id }}">
+                        <button class="btn btn-sm btn-outline-danger">Disable</button>
+                      </form>
+                    </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="text-muted small">No templates yet. Use the form above to add one.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
