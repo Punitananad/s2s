@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan2Service - Hotel Service Management Platform</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #0d6efd;
+            --secondary: #6c757d;
+            --success: #198754;
+            --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        .hero {
+            background: var(--gradient);
+            color: white;
+            padding: 100px 0;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="2" fill="white" opacity="0.1"/></svg>');
+            animation: float 20s linear infinite;
+        }
+        
+        @keyframes float {
+            from { transform: translateY(0); }
+            to { transform: translateY(-100px); }
+        }
+        
+        .feature-card {
+            border: none;
+            border-radius: 20px;
+            padding: 30px;
+            height: 100%;
+            transition: all 0.3s ease;
+            background: white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        }
+        
+        .feature-icon {
+            width: 70px;
+            height: 70px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            margin-bottom: 20px;
+            background: var(--gradient);
+            color: white;
+        }
+        
+        .pricing-card {
+            border: 2px solid #e9ecef;
+            border-radius: 20px;
+            padding: 40px;
+            transition: all 0.3s ease;
+        }
+        
+        .pricing-card:hover {
+            border-color: var(--primary);
+            transform: scale(1.05);
+        }
+        
+        .pricing-card.featured {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            transform: scale(1.08);
+        }
+        
+        .btn-gradient {
+            background: var(--gradient);
+            border: none;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+        
+        .stats-section {
+            background: #f8f9fa;
+            padding: 60px 0;
+        }
+        
+        .stat-card {
+            text-align: center;
+            padding: 30px;
+        }
+        
+        .stat-number {
+            font-size: 48px;
+            font-weight: 700;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .screenshot {
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="/">
+                <i class="fas fa-qrcode text-primary"></i> Scan2Service
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="#features">Features</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#pricing">Pricing</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#demo">Demo</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/login">Login</a></li>
+                    <li class="nav-item"><a class="btn btn-gradient ms-2" href="/signup">Get Started</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container position-relative">
+            <div class="row align-items-center">
+                <div class="col-lg-6">
+                    <h1 class="display-3 fw-bold mb-4">Hotel Service, Reimagined</h1>
+                    <p class="lead mb-4">Enable guests to order food and request services via QR codes. Manage everything in real-time from your dashboard.</p>
+                    <div class="d-flex gap-3">
+                        <a href="#demo" class="btn btn-light btn-lg px-4">Watch Demo</a>
+                        <a href="/signup" class="btn btn-outline-light btn-lg px-4">Start Free Trial</a>
+                    </div>
+                    <div class="mt-4">
+                        <small class="opacity-75">✓ No credit card required  ✓ 14-day free trial  ✓ Cancel anytime</small>
+                    </div>
+                </div>
+                <div class="col-lg-6 text-center">
+                    <i class="fas fa-mobile-alt" style="font-size: 300px; opacity: 0.2;"></i>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-number">60%</div>
+                        <p class="text-muted">Faster Service</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-number">30%</div>
+                        <p class="text-muted">More Revenue</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-number">99%</div>
+                        <p class="text-muted">Guest Satisfaction</p>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card">
+                        <div class="stat-number">0</div>
+                        <p class="text-muted">Order Errors</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-5">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="display-5 fw-bold">Everything You Need</h2>
+                <p class="lead text-muted">Powerful features to transform your hotel service</p>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-qrcode"></i>
+                        </div>
+                        <h4>QR Code Ordering</h4>
+                        <p class="text-muted">Guests scan QR code in their room to access menu and place orders instantly. No app download needed.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-bolt"></i>
+                        </div>
+                        <h4>Real-time Updates</h4>
+                        <p class="text-muted">Orders appear instantly on staff dashboard. Track status in real-time with WebSocket technology.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h4>Analytics Dashboard</h4>
+                        <p class="text-muted">Know your best-selling items, peak hours, and revenue trends. Make data-driven decisions.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fab fa-whatsapp"></i>
+                        </div>
+                        <h4>WhatsApp Integration</h4>
+                        <p class="text-muted">Send order updates directly to guests' WhatsApp. Keep them informed every step of the way.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-file-invoice"></i>
+                        </div>
+                        <h4>Smart Billing</h4>
+                        <p class="text-muted">Generate GST-compliant invoices automatically. Track payments and manage billing effortlessly.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-hotel"></i>
+                        </div>
+                        <h4>Multi-Property</h4>
+                        <p class="text-muted">Manage multiple hotel properties from one dashboard. Perfect for hotel chains.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section id="pricing" class="py-5 bg-light">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="display-5 fw-bold">Simple, Transparent Pricing</h2>
+                <p class="lead text-muted">Choose the plan that fits your hotel</p>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="pricing-card">
+                        <h4>Starter</h4>
+                        <div class="display-4 fw-bold my-3">₹2,999<small class="fs-6 text-muted">/month</small></div>
+                        <ul class="list-unstyled">
+                            <li class="mb-2"><i class="fas fa-check text-success"></i> Up to 20 rooms</li>
+                            <li class="mb-2"><i class="fas fa-check text-success"></i> Basic features</li>
+                            <li class="mb-2"><i class="fas fa-check text-success"></i> Email support</li>
+                            <li class="mb-2"><i class="fas fa-check text-success"></i> 100 orders/month</li>
+                        </ul>
+                        <a href="/signup" class="btn btn-outline-primary w-100 mt-3">Get Started</a>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="pricing-card featured">
+                        <div class="badge bg-primary mb-2">Most Popular</div>
+                        <h4>Professional</h4>
+                        <div class="display-4 fw-bold my-3">₹5,999<small class="fs-6 text-muted">/month</small></div>
+                        <ul class="list-unstyled">
+                            <li class="mb-2"><i class="fas fa-check text-success"></i> Up to 50 rooms</li>
+                            <li class="mb-2"><i class="fas fa-check text-success"></i> All features</li>
+                            <li class="mb-2"><i class="fas fa-check text-success"></i> Priority support</li>
+                            <li class="mb-2"><i class="fas fa-check text-success"></i> Unlimited orders</li>
+                            <li class="mb-2"><i class="fas fa-check text-success"></i> WhatsApp integration</li>
+                        </ul>
+                        <a href="/signup" class="btn btn-gradient w-100 mt-3">Get Started</a>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="pricing-card">
+                        <h4>Enterprise</h4>
+                        <div class="display-4 fw-bold my-3">Custom</div>
+                        <ul class="list-unstyled">
+                            <li class="mb-2"><i class="fas fa-check text-success"></i> Unlimited rooms</li>
+                            <li class="mb-2"><i class="fas fa-check text-success"></i> Custom features</li>
+                            <li class="mb-2"><i class="fas fa-check text-success"></i> Dedicated support</li>
+                            <li class="mb-2"><i class="fas fa-check text-success"></i> Multi-property</li>
+                            <li class="mb-2"><i class="fas fa-check text-success"></i> API access</li>
+                            <li class="mb-2"><i class="fas fa-check text-success"></i> White-label option</li>
+                        </ul>
+                        <a href="mailto:sales@scan2service.in" class="btn btn-outline-primary w-100 mt-3">Contact Sales</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-5">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h2 class="display-6 fw-bold mb-3">Ready to Transform Your Hotel Service?</h2>
+                    <p class="lead text-muted">Join hundreds of hotels already using Scan2Service</p>
+                </div>
+                <div class="col-lg-4 text-lg-end">
+                    <a href="/signup" class="btn btn-gradient btn-lg">Start Free Trial</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5><i class="fas fa-qrcode"></i> Scan2Service</h5>
+                    <p class="text-muted">Hotel Service Management Platform</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <p class="mb-0">&copy; 2026 Scan2Service. All rights reserved.</p>
+                    <p class="text-muted">
+                        <a href="mailto:support@scan2service.in" class="text-white text-decoration-none">support@scan2service.in</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

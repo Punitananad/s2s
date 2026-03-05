@@ -3,16 +3,35 @@
 
 {% block title %}Live Board{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/live-board-modern.css' %}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <div>
-    <h3 class="mb-1">Live Board</h3>
-    <div class="text-muted small">Auto-refreshing every <strong>8s</strong> (plus instant WebSocket updates)</div>
-  </div>
-  <div class="d-flex gap-3 align-items-center">
-    <span class="badge text-bg-success">Completed (today): <span id="countCompleted">{{ completed_today }}</span></span>
-    <span class="badge text-bg-secondary">Cancelled (today): <span id="countCancelled">{{ cancelled_today }}</span></span>
-    <a class="btn btn-outline-secondary btn-sm" href="{% url 'portal_requests_history' %}">View history</a>
+<div class="live-header">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+      <h1 class="live-title"><i class="fas fa-bolt"></i> Live Board</h1>
+      <div class="text-muted small mt-1">
+        <i class="fas fa-sync-alt"></i> Auto-refreshing every 8s + Real-time WebSocket updates
+      </div>
+    </div>
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+      <div class="stats-badges">
+        <div class="stat-badge success">
+          <i class="fas fa-check-circle"></i>
+          <span>Completed Today: <strong id="countCompleted">{{ completed_today }}</strong></span>
+        </div>
+        <div class="stat-badge secondary">
+          <i class="fas fa-times-circle"></i>
+          <span>Cancelled Today: <strong id="countCancelled">{{ cancelled_today }}</strong></span>
+        </div>
+      </div>
+      <a class="btn btn-modern outline" href="{% url 'portal_requests_history' %}">
+        <i class="fas fa-history"></i> View History
+      </a>
+    </div>
   </div>
 </div>
 
@@ -20,30 +39,42 @@
   <!-- ROOMS COLUMN -->
   <div class="col-12 col-lg-4">
     <!-- FREE -->
-    <div class="card mb-3">
-      <div class="card-header bg-light d-flex justify-content-between align-items-center">
-        <span>Free rooms</span>
+    <div class="section-card mb-3">
+      <div class="section-header free">
+        <i class="fas fa-door-open"></i>
+        <span>Free Rooms</span>
       </div>
-      <div class="card-body p-2" id="laneFree">
-        <div class="text-muted small">Loading…</div>
+      <div class="section-body" id="laneFree">
+        <div class="empty-state loading">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p>Loading rooms...</p>
+        </div>
       </div>
     </div>
     <!-- BUSY -->
-    <div class="card mb-3">
-      <div class="card-header bg-warning-subtle d-flex justify-content-between align-items-center">
-        <span>Busy rooms</span>
+    <div class="section-card mb-3">
+      <div class="section-header busy">
+        <i class="fas fa-bed"></i>
+        <span>Busy Rooms</span>
       </div>
-      <div class="card-body p-2" id="laneBusy">
-        <div class="text-muted small">Loading…</div>
+      <div class="section-body" id="laneBusy">
+        <div class="empty-state loading">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p>Loading rooms...</p>
+        </div>
       </div>
     </div>
     <!-- CLEANING -->
-    <div class="card mb-3">
-      <div class="card-header bg-info-subtle d-flex justify-content-between align-items-center">
+    <div class="section-card mb-3">
+      <div class="section-header cleaning">
+        <i class="fas fa-broom"></i>
         <span>Cleaning</span>
       </div>
-      <div class="card-body p-2" id="laneCleaning">
-        <div class="text-muted small">Loading…</div>
+      <div class="section-body" id="laneCleaning">
+        <div class="empty-state loading">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p>Loading rooms...</p>
+        </div>
       </div>
     </div>
   </div>
@@ -52,15 +83,31 @@
   <div class="col-12 col-lg-8">
     <div class="row g-3">
       <div class="col-12 col-md-6">
-        <div class="card h-100">
-          <div class="card-header bg-danger text-white">NEW requests</div>
-          <div class="card-body" id="laneNew"></div>
+        <div class="section-card h-100">
+          <div class="section-header new">
+            <i class="fas fa-bell"></i>
+            <span>NEW Requests</span>
+          </div>
+          <div class="section-body" id="laneNew">
+            <div class="empty-state loading">
+              <i class="fas fa-spinner fa-spin"></i>
+              <p>Loading requests...</p>
+            </div>
+          </div>
         </div>
       </div>
       <div class="col-12 col-md-6">
-        <div class="card h-100">
-          <div class="card-header bg-warning">ACCEPTED requests</div>
-          <div class="card-body" id="laneAccepted"></div>
+        <div class="section-card h-100">
+          <div class="section-header accepted">
+            <i class="fas fa-clock"></i>
+            <span>ACCEPTED Requests</span>
+          </div>
+          <div class="section-body" id="laneAccepted">
+            <div class="empty-state loading">
+              <i class="fas fa-spinner fa-spin"></i>
+              <p>Loading requests...</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -159,133 +206,116 @@
   function cardHTML(r){
     const isFood = r.kind === "FOOD";
     const lines = isFood && r.lines && r.lines.length
-      ? ('<ul class="small mb-2 ps-3">' + r.lines.map(l => `<li>${l.name} × ${l.qty}</li>`).join('') + '</ul>')
-      : (r.note ? `<div class="small text-muted mb-2">${r.note}</div>` : '');
+      ? ('<div class="request-items"><ul>' + r.lines.map(l => `<li><i class="fas fa-utensils"></i> ${l.name} × ${l.qty}</li>`).join('') + '</ul></div>')
+      : (r.note ? `<div class="request-items"><p class="mb-0"><i class="fas fa-comment"></i> ${r.note}</p></div>` : '');
 
     const timeLine = r.status === "ACCEPTED"
-      ? `<div class="small text-muted">Created: ${fmtTime(r.created_at)} · Accepted: ${fmtTime(r.accepted_at)}</div>`
-      : `<div class="small text-muted">Created: ${fmtTime(r.created_at)}</div>`;
+      ? `<div class="request-time"><i class="far fa-clock"></i> Created: ${fmtTime(r.created_at)} · Accepted: ${fmtTime(r.accepted_at)}</div>`
+      : `<div class="request-time"><i class="far fa-clock"></i> ${fmtTime(r.created_at)}</div>`;
 
-    const badge = isFood ? `<span class="badge text-bg-primary">FOOD</span>`
-                         : `<span class="badge text-bg-info">SERVICE</span>`;
-    const total = isFood ? `<div class="fw-bold">${moneyINR(r.subtotal)}</div>` : '';
+    const badge = isFood 
+      ? `<span class="type-badge food"><i class="fas fa-utensils"></i> FOOD</span>`
+      : `<span class="type-badge service"><i class="fas fa-concierge-bell"></i> SERVICE</span>`;
+    
+    const total = isFood ? `<div class="request-total">${moneyINR(r.subtotal)}</div>` : '';
 
     const actions = r.status === "NEW"
-      ? `<button class="btn btn-sm btn-primary me-2 act" data-id="${r.id}" data-a="accept">Accept</button>
-         <button class="btn btn-sm btn-outline-danger me-2 act" data-id="${r.id}" data-a="cancel">Cancel</button>`
-      : `<button class="btn btn-sm btn-success me-2 act" data-id="${r.id}" data-a="complete">Complete</button>
-         <button class="btn btn-sm btn-outline-danger me-2 act" data-id="${r.id}" data-a="cancel">Cancel</button>`;
+      ? `<button class="btn-modern success act" data-id="${r.id}" data-a="accept"><i class="fas fa-check"></i> Accept</button>
+         <button class="btn-modern danger act" data-id="${r.id}" data-a="cancel"><i class="fas fa-times"></i> Cancel</button>`
+      : `<button class="btn-modern primary act" data-id="${r.id}" data-a="complete"><i class="fas fa-check-double"></i> Complete</button>
+         <button class="btn-modern danger act" data-id="${r.id}" data-a="cancel"><i class="fas fa-times"></i> Cancel</button>`;
 
-    // 13.1B — WhatsApp dropdown + button (always present; options depend on waTemplates)
     const waList = Array.isArray(waTemplates) ? waTemplates : [];
     const options = waList.map(t => `<option value="${t.id}">${t.label}</option>`).join('');
-    const waControls = `
-      <div class="mt-2 d-flex align-items-center">
-        <select class="form-select form-select-sm wa-template-select me-2"
-                data-request-id="${r.id}">
-          <option value="">WhatsApp template…</option>
+    const waControls = waList.length > 0 ? `
+      <div class="wa-controls">
+        <select class="wa-select wa-template-select" data-request-id="${r.id}">
+          <option value="">Choose WhatsApp template...</option>
           ${options}
         </select>
-        <button type="button"
-                class="btn btn-sm btn-success send-wa-btn"
-                data-request-id="${r.id}">
-          WhatsApp
+        <button type="button" class="wa-btn send-wa-btn" data-request-id="${r.id}">
+          <i class="fab fa-whatsapp"></i> Send
         </button>
-      </div>`;
+      </div>` : '';
 
-    return `<div class="border rounded p-2 mb-2" data-card="${r.id}">
-      <div class="d-flex justify-content-between align-items-start">
+    return `<div class="request-card" data-card="${r.id}">
+      <div class="request-header">
         <div>
-          <div class="fw-semibold">Room ${r.room} ${badge}</div>
-          ${timeLine}
-          ${lines}
+          <span class="room-badge"><i class="fas fa-door-closed"></i> Room ${r.room}</span>
+          ${badge}
         </div>
         ${total}
       </div>
-      <div class="mt-2">
-        <div class="d-flex mb-1">
-          <button class="btn btn-sm btn-outline-secondary me-2 view" data-id="${r.id}">View</button>
-          ${actions}
-        </div>
-        ${waControls}
+      ${timeLine}
+      ${lines}
+      <div class="request-actions">
+        <button class="btn-modern outline view" data-id="${r.id}"><i class="fas fa-eye"></i> View</button>
+        ${actions}
       </div>
+      ${waControls}
     </div>`;
   }
 
   function renderLane(el, list){
     if (!list || !list.length){
-      el.innerHTML = '<div class="text-muted small">Nothing here.</div>';
+      el.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i><p>Nothing here yet</p></div>';
       return;
     }
     el.innerHTML = list.map(cardHTML).join('');
   }
 
   // Room cards
-    function roomCardHTML(r){
+  function roomCardHTML(r){
     const guest = r.guest_name
-      ? `<div class="small text-muted">${r.guest_name} (${r.guest_phone || ''})</div>`
+      ? `<div class="room-guest"><i class="fas fa-user"></i> ${r.guest_name} · <i class="fas fa-phone"></i> ${r.guest_phone || ''}</div>`
       : '';
     let btn = '';
 
     if (r.status === "FREE") {
-      // Simple check-in button
-      btn = `<button class="btn btn-sm btn-primary ci-btn" data-room="${r.id}">Check-in</button>`;
+      btn = `<button class="btn-modern primary ci-btn" data-room="${r.id}"><i class="fas fa-sign-in-alt"></i> Check-in</button>`;
     }
     else if (r.status === "BUSY") {
-      // 13.1C — BUSY room: show View, Checkout, and WhatsApp template controls
       let waControls = "";
       if (waTemplates && waTemplates.length) {
-        const options = waTemplates
-          .map(t => `<option value="${t.id}">${t.label}</option>`)
-          .join('');
+        const options = waTemplates.map(t => `<option value="${t.id}">${t.label}</option>`).join('');
         waControls = `
-          <div class="mt-1 d-flex align-items-center">
-            <select class="form-select form-select-sm wa-template-select-room me-1"
-                    data-room-id="${r.id}">
-              <option value="">WhatsApp template…</option>
+          <div class="wa-controls">
+            <select class="wa-select wa-template-select-room" data-room-id="${r.id}">
+              <option value="">WhatsApp template...</option>
               ${options}
             </select>
-            <button type="button"
-                    class="btn btn-sm btn-success send-wa-room-btn"
-                    data-room-id="${r.id}">
-              WA
+            <button type="button" class="wa-btn send-wa-room-btn" data-room-id="${r.id}">
+              <i class="fab fa-whatsapp"></i>
             </button>
           </div>`;
       }
 
       btn = `
-        <div class="d-flex flex-column align-items-end gap-1">
-          <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-outline-secondary stay-view-btn" data-room="${r.id}">
-              View details
-            </button>
-            <button class="btn btn-sm btn-warning co-btn" data-room="${r.id}">
-              Check-out
-            </button>
-          </div>
-          ${waControls}
-        </div>`;
+        <div class="room-actions">
+          <button class="btn-modern outline stay-view-btn" data-room="${r.id}">
+            <i class="fas fa-eye"></i> View
+          </button>
+          <button class="btn-modern danger co-btn" data-room="${r.id}">
+            <i class="fas fa-sign-out-alt"></i> Check-out
+          </button>
+        </div>
+        ${waControls}`;
     }
     else if (r.status === "CLEANING") {
-      btn = `<button class="btn btn-sm btn-success ready-btn" data-room="${r.id}">Mark ready</button>`;
+      btn = `<button class="btn-modern success ready-btn" data-room="${r.id}"><i class="fas fa-check"></i> Mark Ready</button>`;
     }
 
     return `
-      <div class="border rounded p-2 mb-2">
-        <div class="d-flex justify-content-between align-items-start">
-          <div>
-            <div class="fw-semibold">Room ${r.number}</div>
-            ${guest}
-          </div>
-          ${btn}
-        </div>
+      <div class="room-card">
+        <div class="room-number"><i class="fas fa-door-closed"></i> Room ${r.number}</div>
+        ${guest}
+        ${btn}
       </div>`;
   }
 
-
   function renderRoomLane(el, list){
     if (!list || !list.length){
-      el.innerHTML = '<div class="text-muted small">No rooms.</div>';
+      el.innerHTML = '<div class="empty-state"><i class="fas fa-door-open"></i><p>No rooms</p></div>';
       return;
     }
     el.innerHTML = list.map(roomCardHTML).join('');

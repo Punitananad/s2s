@@ -1,4 +1,5 @@
-from django.shortcuts import render,  get_object_or_404, redirect
+from django.shortcuts import render, get_object_or_404, redirect
+from django.views.generic import TemplateView
 from django.contrib import messages
 from django.contrib.auth.views import LoginView, LogoutView
 
@@ -9,6 +10,9 @@ from django.contrib.auth.decorators import login_required
 from .models import User, HotelPayment, Hotel
 
 def home(request):
+    # Show landing page for non-authenticated users
+    if not request.user.is_authenticated:
+        return render(request, "landing.html")
     return render(request, "website/home.html")
 
 
