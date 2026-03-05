@@ -116,8 +116,14 @@ class ItemForm(forms.ModelForm):
         img = self.cleaned_data.get("image_existing")
         upload = self.cleaned_data.get("image_upload")
         if upload:
-            # Create an ImageAsset from upload
-            name = self.cleaned_data.get("name") or "Item Photo"
+            # Create an ImageAsset from upload with unique name
+            base_name = self.cleaned_data.get("name") or "Item Photo"
+            name = base_name
+            counter = 1
+            # Ensure unique name
+            while ImageAsset.objects.filter(hotel=self.request.user.hotel, name=name).exists():
+                name = f"{base_name} {counter}"
+                counter += 1
             ia = ImageAsset.objects.create(hotel=self.request.user.hotel, name=name, file=upload)
             obj.image = ia
         elif img:
