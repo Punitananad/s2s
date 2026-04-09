@@ -275,6 +275,7 @@ def live_board(request):
         for t in wa_qs
     ]
 
+    from django.conf import settings as django_settings
     ctx = {
         "new_initial_json": json.dumps(_serialize_requests(new_qs, hotel=hotel)),
         "accepted_initial_json": json.dumps(_serialize_requests(acc_qs, hotel=hotel)),
@@ -288,6 +289,10 @@ def live_board(request):
 
         # 13.1B: WhatsApp templates for JS
         "wa_templates_json": json.dumps(wa_templates),
+
+        # hotel info for WhatsApp welcome popup
+        "hotel": hotel,
+        "site_url": getattr(django_settings, "SITE_URL", "https://scan2service.in"),
     }
     return render(request, "hotelportal/live_board.html", ctx)
 
@@ -645,7 +650,16 @@ def stay_checkin(request):
     push_live_board(hotel)
     _broadcast_live_board(hotel)
     broadcast_portal_board(hotel.id if hotel else None)
-    return JsonResponse({"ok": True, "stay_id": stay.id})
+    return JsonResponse({
+        "ok": True,
+        "stay_id": stay.id,
+        "hotel_id": hotel.id,
+        "hotel_name": hotel.name,
+        "room_id": room.id,
+        "room_number": room.number,
+        "guest_name": guest_name,
+        "phone": phone,
+    })
 
 
 @login_required
