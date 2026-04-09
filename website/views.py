@@ -10,9 +10,9 @@ from django.contrib.auth.decorators import login_required
 from .models import User, HotelPayment, Hotel
 
 def home(request):
-    if not request.user.is_authenticated:
-        return render(request, "landing.html")
-    return render(request, "website/home.html")
+    if request.user.is_authenticated:
+        return redirect('/portal/live/')
+    return render(request, "landing.html")
 
 
 def pricing(request):
