@@ -1,5 +1,12 @@
-{% extends "base.html" %}
+{% extends "base_portal.html" %}
 {% block title %}Settings — Scan2Service{% endblock %}
+
+{% block topbar_breadcrumb %}
+<a href="{% url 'portal_home' %}" class="hover:text-indigo-600">Portal</a>
+<span class="text-gray-300">/</span>
+<span class="font-medium text-gray-700">Settings</span>
+{% endblock %}
+
 {% block content %}
 <style>
   .tile { transition: transform .1s ease, box-shadow .1s ease; }

@@ -504,6 +504,15 @@ def history_view(request):
         start = today_str
         end = today_str
 
+    # Stats for the filtered queryset
+    total_qs = _filtered_history_queryset(request)
+    stats = {
+        "total":     total_qs.count(),
+        "completed": total_qs.filter(status="COMPLETED").count(),
+        "pending":   total_qs.filter(status__in=["NEW", "ACCEPTED"]).count(),
+        "cancelled": total_qs.filter(status="CANCELLED").count(),
+    }
+
     ctx = {
         "page_obj": page_obj,
         "status": request.GET.get("status") or "",
@@ -513,6 +522,7 @@ def history_view(request):
         "end": end,
         "q": request.GET.get("q") or "",
         "rooms": list(rooms_qs),
+        "stats": stats,
     }
     return render(request, "hotelportal/history.html", ctx)
 
@@ -592,38 +602,79 @@ def request_detail(request, pk):
 @require_POST
 def stay_checkin(request):
     """
-    Expects: room_id, guest_name, phone
-    Creates a Stay and flips room -> BUSY
+    Expects: room_id, guest_name, phone + optional guest details.
+    Creates a Stay and flips room -> BUSY.
     """
     hotel = _hotel_or_403(request)
     if not hotel and request.user.role != "PLATFORM_ADMIN":
         return JsonResponse({"ok": False, "error": "no-hotel"}, status=403)
 
-    room_id   = request.POST.get("room_id")
-    guest_name= (request.POST.get("guest_name") or "").strip()
-    phone     = (request.POST.get("phone") or "").strip()
+    room_id    = request.POST.get("room_id")
+    guest_name = (request.POST.get("guest_name") or "").strip()
+    phone      = (request.POST.get("phone") or "").strip()
+
+    if not guest_name or not phone:
+        return JsonResponse({"ok": False, "error": "Guest name and phone are required."}, status=400)
 
     room = get_object_or_404(Room, id=room_id, hotel=hotel)
-
     if room.current_stay:
         return JsonResponse({"ok": False, "error": "already-busy"}, status=400)
 
-    stay = Stay.objects.create(
+    stay = Stay(
         hotel=hotel,
         room=room,
         guest_name=guest_name,
         phone=phone,
-        status="CHECKED_IN",
-        check_in_at=timezone.now(),
+        # optional fields
+        id_type        = (request.POST.get("id_type") or "").strip(),
+        id_number      = (request.POST.get("id_number") or "").strip(),
+        aadhaar_number = (request.POST.get("aadhaar_number") or "").strip(),
+        gender         = (request.POST.get("gender") or "").strip(),
+        city           = (request.POST.get("city") or "").strip(),
+        state          = (request.POST.get("state") or "").strip(),
+        address        = (request.POST.get("address") or "").strip(),
+        signature_data = (request.POST.get("signature_data") or "").strip(),
     )
-    room.current_stay = stay
-    room.status = "BUSY"
-    room.save(update_fields=["current_stay", "status"])
+    age_raw = request.POST.get("age", "").strip()
+    if age_raw.isdigit():
+        stay.age = int(age_raw)
+    if request.FILES.get("id_proof"):
+        stay.id_proof = request.FILES["id_proof"]
+    stay.save()
+
     push_live_board(hotel)
-        # 11.2 — push live update
-    _broadcast_live_board(hotel)    
+    _broadcast_live_board(hotel)
     broadcast_portal_board(hotel.id if hotel else None)
     return JsonResponse({"ok": True, "stay_id": stay.id})
+
+
+@login_required
+def guest_lookup(request):
+    """
+    GET ?phone=XXXXXXXXXX
+    Returns last stay details for that phone (for auto-fill).
+    """
+    hotel = _hotel_or_403(request)
+    phone = (request.GET.get("phone") or "").strip()
+    if not phone or not hotel:
+        return JsonResponse({"ok": False})
+
+    stay = Stay.objects.filter(hotel=hotel, phone=phone).order_by("-check_in_at").first()
+    if not stay:
+        return JsonResponse({"ok": False})
+
+    return JsonResponse({
+        "ok": True,
+        "guest_name":     stay.guest_name,
+        "id_type":        stay.id_type,
+        "id_number":      stay.id_number,
+        "aadhaar_number": stay.aadhaar_number,
+        "age":            stay.age,
+        "gender":         stay.gender,
+        "city":           stay.city,
+        "state":          stay.state,
+        "address":        stay.address,
+    })
     
 
 

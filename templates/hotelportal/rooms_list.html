@@ -1,48 +1,114 @@
-{% extends "base.html" %}
+{% extends "base_portal.html" %}
 {% block title %}Rooms — Scan2Service{% endblock %}
+
+{% block topbar_breadcrumb %}
+<a href="{% url 'portal_home' %}" class="hover:text-indigo-600">Portal</a>
+<span class="text-gray-300">/</span>
+<span class="font-medium text-gray-700">Rooms</span>
+{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h3 class="mb-0">Rooms</h3>
-  {% if request.user.role != "STAFF" %}
-    <a href="{% url 'room_create' %}" class="btn btn-sm btn-primary">Add Room</a>
-  {% endif %}
+
+<!-- Page Header -->
+<div class="ds-page-header">
+  <div>
+    <h1 class="ds-page-title">Rooms</h1>
+    <p class="ds-page-subtitle">Manage all rooms, floors and QR codes for {{ request.user.hotel.name }}</p>
+  </div>
+  <div class="ds-page-header-actions">
+    <a href="{% url 'rooms_qr_sheet' %}" class="ds-btn ds-btn-secondary ds-btn-sm" target="_blank">
+      <i class="fa-solid fa-qrcode"></i> Print QRs
+    </a>
+    {% if request.user.role != "STAFF" %}
+      <a href="{% url 'room_generator' %}" class="ds-btn ds-btn-primary-soft ds-btn-sm">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Rooms
+      </a>
+      <a href="{% url 'room_create' %}" class="ds-btn ds-btn-primary ds-btn-sm">
+        <i class="fa-solid fa-plus"></i> Add Room
+      </a>
+    {% endif %}
+  </div>
 </div>
 
-<div class="card shadow-sm">
-  <div class="card-body p-0">
-    <table class="table table-sm mb-0">
-      <thead class="table-light">
+<!-- Table Card -->
+<div class="ds-card">
+  <div class="ds-card-header">
+    <div>
+      <div class="ds-card-title">All Rooms</div>
+      <div class="ds-card-description">{{ rooms|length }} room{{ rooms|length|pluralize }} configured</div>
+    </div>
+  </div>
+
+  <div class="ds-table-wrap">
+    <table class="ds-table">
+      <thead>
         <tr>
           <th>Room #</th>
           <th>Floor</th>
-          <th>Active</th>
-          <th>Current stay</th>
-          <th></th>
+          <th>Status</th>
+          <th>Current Stay</th>
+          {% if request.user.role != "STAFF" %}<th class="ds-col-right">Actions</th>{% endif %}
         </tr>
       </thead>
       <tbody>
         {% for r in rooms %}
           <tr>
-            <td>{{ r.number }}</td>
-            <td>{{ r.floor|default:"—" }}</td>
-            <td>{{ r.is_active|yesno:"Yes,No" }}</td>
-            <td>{% if r.current_stay %}Stay {{ r.current_stay.id }}{% else %}—{% endif %}</td>
-            <td class="text-end">
-{% if request.user.role != "STAFF" %}
-  <a href="{% url 'room_edit' r.id %}" class="btn btn-sm btn-outline-secondary">Edit</a>
-  <form method="post" action="{% url 'room_delete' r.id %}" class="d-inline"
-        onsubmit="return confirm('Delete this room and all its history permanently?');">
-    {% csrf_token %}
-    <button class="btn btn-sm btn-outline-danger">Delete</button>
-  </form>
-{% endif %}
+            <td>
+              <span class="ds-text-primary">{{ r.number }}</span>
             </td>
+            <td class="ds-text-secondary">{{ r.floor|default:"—" }}</td>
+            <td>
+              {% if r.is_active %}
+                <span class="ds-badge ds-badge-success ds-badge-dot">Active</span>
+              {% else %}
+                <span class="ds-badge ds-badge-neutral ds-badge-dot">Inactive</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if r.current_stay %}
+                <a href="{% url 'portal_stay_detail' r.current_stay.id %}"
+                   class="ds-badge ds-badge-info">
+                  Stay #{{ r.current_stay.id }}
+                </a>
+              {% else %}
+                <span class="ds-text-muted">Vacant</span>
+              {% endif %}
+            </td>
+            {% if request.user.role != "STAFF" %}
+            <td class="ds-cell-actions">
+              <div class="ds-table-actions">
+                <a href="{% url 'room_edit' r.id %}" class="ds-btn ds-btn-secondary ds-btn-sm">
+                  <i class="fa-solid fa-pen-to-square"></i> Edit
+                </a>
+                <form method="post" action="{% url 'room_delete' r.id %}" class="ds-inline-form"
+                      onsubmit="return confirm('Delete room {{ r.number }} and all its history permanently?');">
+                  {% csrf_token %}
+                  <button type="submit" class="ds-btn ds-btn-danger ds-btn-sm">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </form>
+              </div>
+            </td>
+            {% endif %}
           </tr>
         {% empty %}
-          <tr><td colspan="5" class="text-muted p-3">No rooms yet.</td></tr>
+          <tr>
+            <td colspan="5">
+              <div class="ds-empty">
+                <i class="fa-solid fa-door-open ds-empty-icon"></i>
+                No rooms configured yet.
+                {% if request.user.role != "STAFF" %}
+                  <br><a href="{% url 'room_create' %}" class="ds-btn ds-btn-primary ds-btn-sm" style="margin-top:1rem;">
+                    <i class="fa-solid fa-plus"></i> Add your first room
+                  </a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
+
 {% endblock %}

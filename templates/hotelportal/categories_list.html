@@ -1,28 +1,52 @@
-{# templates/hotelportal/categories_list.html #}
-{% extends "base.html" %}
+{% extends "base_portal.html" %}
+{% block title %}Categories — Scan2Service{% endblock %}
 
-{% block title %}Categories{% endblock %}
+{% block topbar_breadcrumb %}
+<a href="{% url 'portal_home' %}" class="hover:text-indigo-600">Portal</a>
+<span class="text-gray-300">/</span>
+<a href="{% url 'items_list' %}" class="hover:text-indigo-600">Items</a>
+<span class="text-gray-300">/</span>
+<span class="font-medium text-gray-700">Categories</span>
+{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <h4 class="mb-0">Categories</h4>
-  <a href="{% url 'category_create' %}" class="btn btn-primary btn-sm">
-    + Add Category
-  </a>
+
+<!-- Page Header -->
+<div class="ds-page-header">
+  <div>
+    <h1 class="ds-page-title">Categories</h1>
+    <p class="ds-page-subtitle">Organise menu items into food and service categories</p>
+  </div>
+  <div class="ds-page-header-actions">
+    <a href="{% url 'items_list' %}" class="ds-btn ds-btn-secondary ds-btn-sm">
+      <i class="fa-solid fa-arrow-left"></i> Back to Items
+    </a>
+    <a href="{% url 'category_create' %}" class="ds-btn ds-btn-primary ds-btn-sm">
+      <i class="fa-solid fa-plus"></i> Add Category
+    </a>
+  </div>
 </div>
 
-<div class="card shadow-sm">
-  <div class="card-body p-0">
-    <table class="table table-sm align-middle mb-0">
-      <thead class="table-light">
+<!-- Table Card -->
+<div class="ds-card">
+  <div class="ds-card-header">
+    <div>
+      <div class="ds-card-title">All Categories</div>
+      <div class="ds-card-description">{{ categories|length }} categor{{ categories|length|pluralize:"y,ies" }}</div>
+    </div>
+  </div>
+
+  <div class="ds-table-wrap">
+    <table class="ds-table">
+      <thead>
         <tr>
-          <th style="width:50px;">Icon</th>
-          <th>Kind</th>
+          <th style="width:3rem;">Icon</th>
           <th>Name</th>
+          <th>Kind</th>
           <th>Parent</th>
           <th>Position</th>
-          <th>Active</th>
-          <th style="width:140px;"></th>
+          <th>Status</th>
+          <th class="ds-col-right">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -30,48 +54,65 @@
           <tr>
             <td>
               {% if c.icon %}
-                <img src="{{ c.icon.url }}"
-                     alt=""
-                     style="height:28px;width:28px;object-fit:cover;border-radius:6px;">
+                <img src="{{ c.icon.url }}" alt=""
+                     style="height:1.75rem;width:1.75rem;object-fit:cover;border-radius:0.375rem;">
               {% else %}
-                <span class="text-muted small">—</span>
+                <div style="height:1.75rem;width:1.75rem;border-radius:0.375rem;
+                            background:#f3f4f6;display:flex;align-items:center;
+                            justify-content:center;">
+                  <i class="fa-solid fa-tag" style="font-size:0.625rem;color:#9ca3af;"></i>
+                </div>
               {% endif %}
             </td>
-            <td><span class="badge bg-secondary">{{ c.get_kind_display }}</span></td>
-            <td>{{ c.name }}</td>
+            <td class="ds-text-primary">{{ c.name }}</td>
+            <td>
+              {% if c.get_kind_display == "Food" %}
+                <span class="ds-badge ds-badge-info">{{ c.get_kind_display }}</span>
+              {% else %}
+                <span class="ds-badge ds-badge-purple">{{ c.get_kind_display }}</span>
+              {% endif %}
+            </td>
             <td>
               {% if c.parent %}
-                {{ c.parent.name }}
+                <span class="ds-text-secondary">{{ c.parent.name }}</span>
               {% else %}
-                <span class="text-muted small">Root</span>
+                <span class="ds-text-muted">Root</span>
               {% endif %}
             </td>
-            <td>{{ c.position }}</td>
+            <td class="ds-text-muted">{{ c.position }}</td>
             <td>
               {% if c.is_active %}
-                <span class="badge bg-success">Active</span>
+                <span class="ds-badge ds-badge-success ds-badge-dot">Active</span>
               {% else %}
-                <span class="badge bg-danger">Inactive</span>
+                <span class="ds-badge ds-badge-danger ds-badge-dot">Inactive</span>
               {% endif %}
             </td>
-            <td class="text-end">
-              <a href="{% url 'category_edit' c.id %}" class="btn btn-sm btn-outline-primary">
-                Edit
-              </a>
-              <form action="{% url 'category_delete' c.id %}" method="post"
-                    class="d-inline"
-                    onsubmit="return confirm('Delete this category?');">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-outline-danger">
-                  Delete
-                </button>
-              </form>
+            <td class="ds-cell-actions">
+              <div class="ds-table-actions">
+                <a href="{% url 'category_edit' c.id %}" class="ds-btn ds-btn-secondary ds-btn-sm">
+                  <i class="fa-solid fa-pen-to-square"></i> Edit
+                </a>
+                <form action="{% url 'category_delete' c.id %}" method="post" class="ds-inline-form"
+                      onsubmit="return confirm('Delete category {{ c.name }}?');">
+                  {% csrf_token %}
+                  <button type="submit" class="ds-btn ds-btn-danger ds-btn-sm">
+                    <i class="fa-solid fa-trash"></i>
+                  </button>
+                </form>
+              </div>
             </td>
           </tr>
         {% empty %}
           <tr>
-            <td colspan="7" class="text-center text-muted py-3">
-              No categories yet.
+            <td colspan="7">
+              <div class="ds-empty">
+                <i class="fa-solid fa-tags ds-empty-icon"></i>
+                No categories yet.
+                <br>
+                <a href="{% url 'category_create' %}" class="ds-btn ds-btn-primary ds-btn-sm" style="margin-top:1rem;">
+                  <i class="fa-solid fa-plus"></i> Add first category
+                </a>
+              </div>
             </td>
           </tr>
         {% endfor %}
@@ -79,4 +120,5 @@
     </table>
   </div>
 </div>
+
 {% endblock %}

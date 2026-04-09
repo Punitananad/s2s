@@ -1,39 +1,93 @@
-{% extends "base.html" %}
+{% extends "base_portal.html" %}
 {% load form_tags %}
 {% block title %}Add Staff — Scan2Service{% endblock %}
+
+{% block topbar_breadcrumb %}
+<a href="{% url 'portal_home' %}" class="hover:text-indigo-600">Portal</a>
+<span class="text-gray-300">/</span>
+<a href="{% url 'staff_list' %}" class="hover:text-indigo-600">Staff</a>
+<span class="text-gray-300">/</span>
+<span class="font-medium text-gray-700">Add</span>
+{% endblock %}
+
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-6">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h4 class="mb-3">Add Staff User</h4>
-        <form method="post" novalidate>
-          {% csrf_token %}
-          <div class="mb-3">
-            <label class="form-label">Username</label>
-            {{ form.username|add_class:"form-control" }}
-            {% for e in form.username.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Email (optional)</label>
-            {{ form.email|add_class:"form-control" }}
-          </div>
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label">Password</label>
-              {{ form.password1|add_class:"form-control" }}
-              {% for e in form.password1.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Confirm Password</label>
-              {{ form.password2|add_class:"form-control" }}
-              {% for e in form.password2.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
-            </div>
-          </div>
-          <button class="btn btn-success mt-3">Create Staff</button>
-        </form>
-      </div>
-    </div>
+
+<!-- Page Header -->
+<div class="ds-page-header">
+  <div>
+    <h1 class="ds-page-title">Add Staff User</h1>
+    <p class="ds-page-subtitle">Create a new staff account for {{ request.user.hotel.name }}</p>
   </div>
 </div>
+
+<div style="max-width:40rem;">
+  <div class="ds-card">
+    <div class="ds-card-header">
+      <div class="ds-card-title">Account Details</div>
+    </div>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="ds-card-body">
+
+        {% if form.non_field_errors %}
+          <div class="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700" style="margin-bottom:1.25rem;">
+            {{ form.non_field_errors }}
+          </div>
+        {% endif %}
+
+        <div class="ds-form-grid">
+
+          <div class="ds-form-field">
+            <label class="ds-form-label" for="{{ form.username.id_for_label }}">
+              Username <span style="color:var(--ds-danger)">*</span>
+            </label>
+            {{ form.username }}
+            {% for e in form.username.errors %}<p class="ds-form-error">{{ e }}</p>{% endfor %}
+            <p class="ds-form-help">Letters, digits and @/./+/-/_ only</p>
+          </div>
+
+          <div class="ds-form-field">
+            <label class="ds-form-label" for="{{ form.email.id_for_label }}">Email</label>
+            {{ form.email }}
+            {% for e in form.email.errors %}<p class="ds-form-error">{{ e }}</p>{% endfor %}
+            <p class="ds-form-help">Optional — used for password recovery</p>
+          </div>
+
+        </div>
+
+        <hr class="ds-divider">
+
+        <div class="ds-form-grid ds-form-grid-2">
+
+          <div class="ds-form-field">
+            <label class="ds-form-label" for="{{ form.password1.id_for_label }}">
+              Password <span style="color:var(--ds-danger)">*</span>
+            </label>
+            {{ form.password1 }}
+            {% for e in form.password1.errors %}<p class="ds-form-error">{{ e }}</p>{% endfor %}
+          </div>
+
+          <div class="ds-form-field">
+            <label class="ds-form-label" for="{{ form.password2.id_for_label }}">
+              Confirm Password <span style="color:var(--ds-danger)">*</span>
+            </label>
+            {{ form.password2 }}
+            {% for e in form.password2.errors %}<p class="ds-form-error">{{ e }}</p>{% endfor %}
+          </div>
+
+        </div>
+
+        <div class="ds-form-actions">
+          <a href="{% url 'staff_list' %}" class="ds-btn ds-btn-ghost">Cancel</a>
+          <button type="submit" class="ds-btn ds-btn-primary">
+            <i class="fa-solid fa-user-plus"></i> Create Staff
+          </button>
+        </div>
+
+      </div>
+    </form>
+  </div>
+</div>
+
 {% endblock %}

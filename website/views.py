@@ -10,10 +10,47 @@ from django.contrib.auth.decorators import login_required
 from .models import User, HotelPayment, Hotel
 
 def home(request):
-    # Show landing page for non-authenticated users
     if not request.user.is_authenticated:
         return render(request, "landing.html")
     return render(request, "website/home.html")
+
+
+def pricing(request):
+    context = {
+        "starter_features": [
+            "Up to 20 rooms",
+            "3 staff accounts",
+            "Food & service ordering",
+            "QR code generation",
+            "Basic invoicing",
+            "Email support",
+        ],
+        "pro_features": [
+            "Up to 100 rooms",
+            "10 staff accounts",
+            "CSV export & reports",
+            "WhatsApp templates",
+            "GST invoicing",
+            "Priority support",
+        ],
+        "enterprise_features": [
+            "Unlimited rooms",
+            "Unlimited staff",
+            "Custom domain",
+            "API access",
+            "Webhook integrations",
+            "Dedicated support",
+        ],
+    }
+    return render(request, "website/landing/pricing.html", context)
+
+
+def about(request):
+    return render(request, "website/landing/about.html")
+
+
+def contact(request):
+    return render(request, "website/landing/contact.html")
 
 
 

@@ -17,6 +17,7 @@ urlpatterns = [
      # rooms (Day 3.1)
     path("rooms/", views.rooms_list, name="rooms_list"),
     path("rooms/add/", views.room_create, name="room_create"),
+    path("rooms/generate/", views.room_generator, name="room_generator"),
     path("rooms/<int:pk>/edit/", views.room_edit, name="room_edit"),
     path("rooms/<int:pk>/delete/", views.room_delete, name="room_delete"),
     path("rooms/qr/print/", views.rooms_qr_sheet, name="rooms_qr_sheet"),
@@ -48,6 +49,7 @@ urlpatterns = [
    
    #7.2
    path("stay/checkin/", views_live.stay_checkin, name="portal_stay_checkin"),
+   path("guest/lookup/", views_live.guest_lookup, name="portal_guest_lookup"),
    path("stay/checkout/", views_live.stay_checkout, name="portal_stay_checkout"),
    path("room/ready/", views_live.room_mark_ready, name="portal_room_ready"),
 

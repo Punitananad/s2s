@@ -1,0 +1,94 @@
+{% extends "base_landing.html" %}
+{% load static %}
+
+{% block title %}Contact — Scan2Service{% endblock %}
+
+{% block content %}
+
+<img class="floating-bubble-1 absolute right-0 top-0 -z-[1]" src="{% static 'images/floating-bubble-1.svg' %}" alt="" />
+<img class="floating-bubble-2 absolute left-0 top-[387px] -z-[1]" src="{% static 'images/floating-bubble-2.svg' %}" alt="" />
+
+<!-- Page Hero -->
+<section class="page-hero pt-16 pb-6">
+  <div class="container">
+    <div class="text-center">
+      <ul class="breadcrumb inline-flex h-8 items-center justify-center space-x-2 rounded-3xl bg-theme-light px-4 py-2">
+        <li class="leading-none">
+          <a class="inline-flex items-center text-primary" href="{% url 'home' %}">
+            <i class="fa-solid fa-house mr-1.5 text-sm"></i>
+            <span class="text-sm leading-none">Home</span>
+          </a>
+        </li>
+        <li class="leading-none text-dark">
+          <span class="text-sm leading-none">/ Contact</span>
+        </li>
+      </ul>
+    </div>
+    <div class="page-hero-content mx-auto max-w-[768px] text-center">
+      <h1 class="mb-5 mt-8">Get in touch with our team</h1>
+      <p>Have a question about pricing or features? We'd love to hear from you.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Contact Form + Image -->
+<section class="section pt-0 pb-20">
+  <div class="container">
+    <div class="row gx-5">
+
+      <div class="mb-10 text-center md:col-6 md:order-2 md:mb-0 md:pt-9">
+        <div class="contact-img relative inline-flex pl-5 pb-5">
+          <img src="{% static 'images/contact-img.png' %}" alt="Contact" />
+          <img class="absolute bottom-0 left-0 -z-[1] h-14 w-14" src="{% static 'images/shape-2.svg' %}" alt="" />
+        </div>
+        <!-- Contact info cards -->
+        <div class="mt-8 space-y-4 text-left">
+          <div class="flex items-start gap-3 rounded-lg bg-theme-light p-4">
+            <i class="fa-solid fa-envelope text-primary mt-1"></i>
+            <div>
+              <p class="font-semibold">Email</p>
+              <p class="text-sm text-gray-600">support@scan2service.in</p>
+            </div>
+          </div>
+          <div class="flex items-start gap-3 rounded-lg bg-theme-light p-4">
+            <i class="fa-brands fa-whatsapp text-primary mt-1"></i>
+            <div>
+              <p class="font-semibold">WhatsApp</p>
+              <p class="text-sm text-gray-600">Available Mon–Sat, 9am–6pm IST</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="md:col-6 md:order-1">
+        <form class="lg:max-w-[484px]" method="POST" action="#">
+          {% csrf_token %}
+          <div class="form-group mb-5">
+            <label class="form-label" for="contact_name">Full Name</label>
+            <input class="form-control" type="text" id="contact_name" name="name"
+              placeholder="Your Full Name" required />
+          </div>
+          <div class="form-group mb-5">
+            <label class="form-label" for="contact_email">Email Address</label>
+            <input class="form-control" type="email" id="contact_email" name="email"
+              placeholder="your@email.com" required />
+          </div>
+          <div class="form-group mb-5">
+            <label class="form-label" for="contact_hotel">Hotel Name</label>
+            <input class="form-control" type="text" id="contact_hotel" name="hotel_name"
+              placeholder="Your Hotel Name" />
+          </div>
+          <div class="form-group mb-5">
+            <label class="form-label" for="contact_message">Message</label>
+            <textarea class="form-control" id="contact_message" name="message" rows="5"
+              placeholder="Tell us how we can help..." required></textarea>
+          </div>
+          <input class="btn btn-primary block w-full" type="submit" value="Send Message" />
+        </form>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+{% endblock %}

@@ -1,0 +1,83 @@
+{% load static %}
+<!-- ===================== TOPBAR ===================== -->
+<header class="sticky top-0 z-20 flex h-16 items-center gap-4 border-b border-gray-200 bg-white px-4 shadow-sm lg:px-6">
+
+  <!-- Mobile hamburger -->
+  <button
+    class="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-gray-100 lg:hidden"
+    onclick="
+      const sb = document.getElementById('portal-sidebar');
+      const ov = document.getElementById('sidebar-overlay');
+      sb.classList.toggle('-translate-x-full');
+      ov.classList.toggle('hidden');
+    "
+    aria-label="Open sidebar">
+    <svg class="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+    </svg>
+  </button>
+
+  <!-- Breadcrumb / Page title -->
+  <div class="flex-1 min-w-0">
+    <nav class="flex items-center gap-1.5 text-sm text-gray-500">
+      {% block topbar_breadcrumb %}
+      <a href="{% url 'portal_home' %}" class="hover:text-indigo-600">Portal</a>
+      {% endblock %}
+    </nav>
+  </div>
+
+  <!-- Right side actions -->
+  <div class="flex items-center gap-3">
+
+    <!-- Live board quick link -->
+    <a href="{% url 'live_board' %}"
+       class="hidden items-center gap-1.5 rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 sm:flex">
+      <span class="relative flex h-2 w-2">
+        <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75"></span>
+        <span class="relative inline-flex h-2 w-2 rounded-full bg-indigo-500"></span>
+      </span>
+      Live Board
+    </a>
+
+    <!-- User menu -->
+    <div class="relative" x-data="{ open: false }" @click.outside="open = false">
+      <button
+        onclick="this.nextElementSibling.classList.toggle('hidden')"
+        class="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-gray-100">
+        <div class="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">
+          {{ request.user.username|slice:":1"|upper }}
+        </div>
+        <span class="hidden text-sm font-medium text-gray-700 sm:block">{{ request.user.username }}</span>
+        <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      <!-- Dropdown -->
+      <div class="absolute right-0 top-10 z-50 hidden w-48 rounded-xl border border-gray-100 bg-white py-1 shadow-lg">
+        {% if request.user.hotel %}
+        <div class="border-b border-gray-100 px-4 py-2">
+          <p class="text-xs text-gray-400">Hotel</p>
+          <p class="truncate text-sm font-medium text-gray-800">{{ request.user.hotel.name }}</p>
+        </div>
+        {% endif %}
+        <a href="{% url 'portal_settings' %}" class="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+          <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          Settings
+        </a>
+        <a href="{% url 'logout' %}" class="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          Sign Out
+        </a>
+      </div>
+    </div>
+
+  </div>
+</header>

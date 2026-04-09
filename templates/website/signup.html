@@ -1,58 +1,164 @@
+{% extends "base_auth.html" %}
+{% load static %}
 
-{% extends "base.html" %}
-{% block title %}Sign up — Scan2Service{% endblock %}
+{% block title %}Create Account — Scan2Service{% endblock %}
+
 {% block content %}
 {% load form_tags %}
-<div class="row justify-content-center">
-  <div class="col-md-6">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h4 class="mb-3">Create Hotel Admin Account</h4>
-        <form method="post" novalidate>
-          {% csrf_token %}
-          <div class="row g-3">
-            <div class="col-md-12">
-              <label class="form-label">Username</label>
+<section class="">
+  <div class="container max-w-full">
+    <div class="row min-h-screen">
+
+      <!-- Left: Form panel -->
+      <div class="bg-white py-10 lg:col-6 lg:py-[60px]">
+        <div class="mx-auto w-full max-w-[520px] px-6">
+
+          <!-- Logo -->
+          <a href="{% url 'home' %}" class="mb-6 inline-block">
+            <span style="font-size:1.5rem;font-weight:700;color:#4f46e5;">Scan2Service</span>
+          </a>
+
+          <h1 class="mb-1 text-3xl font-bold">Create your account</h1>
+          <p class="mb-6 text-gray-500">Start your 14-day free trial — no credit card required</p>
+
+          <!-- Form errors summary -->
+          {% if form.errors %}
+            <div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              Please fix the errors below.
+            </div>
+          {% endif %}
+
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            <!-- Account credentials -->
+            <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Account</p>
+
+            <div class="form-group">
+              <label for="id_username" class="form-label">Username</label>
               {{ form.username|add_class:"form-control" }}
-              {% for e in form.username.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+              {% for e in form.username.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ e }}</p>
+              {% endfor %}
             </div>
 
-            <div class="col-md-6">
-              <label class="form-label">Password</label>
-              {{ form.password1|add_class:"form-control" }}
-              {% for e in form.password1.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Confirm Password</label>
-              {{ form.password2|add_class:"form-control" }}
-              {% for e in form.password2.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+            <div class="row mt-4">
+              <div class="col-6">
+                <div class="form-group">
+                  <label for="id_password1" class="form-label">Password</label>
+                  {{ form.password1|add_class:"form-control" }}
+                  {% for e in form.password1.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ e }}</p>
+                  {% endfor %}
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="form-group">
+                  <label for="id_password2" class="form-label">Confirm Password</label>
+                  {{ form.password2|add_class:"form-control" }}
+                  {% for e in form.password2.errors %}
+                    <p class="mt-1 text-sm text-red-600">{{ e }}</p>
+                  {% endfor %}
+                </div>
+              </div>
             </div>
 
-            <div class="col-md-12"><hr></div>
+            <!-- Hotel details -->
+            <p class="mt-6 mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">Your Hotel</p>
 
-            <div class="col-md-12">
-              <label class="form-label">Hotel name</label>
+            <div class="form-group">
+              <label for="id_hotel_name" class="form-label">Hotel Name</label>
               {{ form.hotel_name|add_class:"form-control" }}
-              {% for e in form.hotel_name.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+              {% for e in form.hotel_name.errors %}
+                <p class="mt-1 text-sm text-red-600">{{ e }}</p>
+              {% endfor %}
             </div>
-            <div class="col-md-4">
-              <label class="form-label">City</label>
-              {{ form.city|add_class:"form-control" }}
+
+            <div class="row mt-4">
+              <div class="col-4">
+                <div class="form-group">
+                  <label for="id_city" class="form-label">City</label>
+                  {{ form.city|add_class:"form-control" }}
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="form-group">
+                  <label for="id_phone" class="form-label">Phone</label>
+                  {{ form.phone|add_class:"form-control" }}
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="form-group">
+                  <label for="id_email" class="form-label">Hotel Email</label>
+                  {{ form.email|add_class:"form-control" }}
+                </div>
+              </div>
             </div>
-            <div class="col-md-4">
-              <label class="form-label">Phone</label>
-              {{ form.phone|add_class:"form-control" }}
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Hotel email</label>
-              {{ form.email|add_class:"form-control" }}
+
+            <input
+              class="btn btn-primary mt-8 block w-full cursor-pointer"
+              type="submit"
+              value="Create Account & Start Trial"
+            />
+
+            <p class="mt-4 text-center text-sm text-gray-500">
+              Already have an account?
+              <a class="text-primary font-medium" href="{% url 'login' %}">Sign in</a>
+            </p>
+
+            <p class="mt-4 text-center text-xs text-gray-400">
+              By signing up, you agree to our Terms of Service and Privacy Policy.
+            </p>
+          </form>
+
+        </div>
+      </div>
+
+      <!-- Right: Promo panel -->
+      <div class="auth-banner bg-gradient hidden lg:flex flex-col items-center justify-center py-16 lg:col-6 relative overflow-hidden">
+        <img
+          class="absolute top-0 left-0 h-full w-full object-cover opacity-20"
+          src="{% static 'images/login-banner-bg.svg' %}"
+          alt=""
+        />
+        <div class="relative z-10 w-full px-12 text-center">
+          <h2 class="h3 text-white mb-4">
+            Up and running<br />in under 15 minutes
+          </h2>
+          <p class="text-white/80 mb-10">
+            Add your rooms, set up your menu, print QR codes, and you're live.
+            No technical knowledge required.
+          </p>
+          <ul class="text-left space-y-4 text-white max-w-xs mx-auto">
+            <li class="flex items-start gap-3">
+              <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-bold">1</span>
+              <span>Sign up and add your hotel details</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-bold">2</span>
+              <span>Create your rooms and menu items</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-bold">3</span>
+              <span>Print QR codes and place them in rooms</span>
+            </li>
+            <li class="flex items-start gap-3">
+              <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-bold">4</span>
+              <span>Guests scan and order — you manage from dashboard</span>
+            </li>
+          </ul>
+          <div class="swiper auth-banner-carousel mt-10">
+            <div class="swiper-wrapper">
+              <div class="swiper-slide">
+                <img width="460" class="mx-auto rounded-xl shadow-2xl"
+                  src="{% static 'images/signup-carousel-img-1.png' %}" alt="" />
+              </div>
             </div>
           </div>
-
-          <button class="btn btn-success mt-3" type="submit">Create account</button>
-        </form>
+        </div>
       </div>
+
     </div>
   </div>
-</div>
+</section>
 {% endblock %}

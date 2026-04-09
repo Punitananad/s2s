@@ -1,0 +1,645 @@
+{% extends "base_portal.html" %}
+{% block title %}Room Generator — Scan2Service{% endblock %}
+
+{% block topbar_breadcrumb %}
+<a href="{% url 'portal_home' %}" class="hover:text-indigo-600">Portal</a>
+<span class="text-gray-300">/</span>
+<a href="{% url 'rooms_list' %}" class="hover:text-indigo-600">Rooms</a>
+<span class="text-gray-300">/</span>
+<span class="font-medium text-gray-700">Generator</span>
+{% endblock %}
+
+{% block content %}
+
+<!-- Page Header -->
+<div class="ds-page-header">
+  <div>
+    <h1 class="ds-page-title">Room Generator</h1>
+    <p class="ds-page-subtitle">
+      Create one room, a numbered range, entire floors, or paste a custom list — all in one step.
+    </p>
+  </div>
+  <div class="ds-page-header-actions">
+    <a href="{% url 'rooms_list' %}" class="ds-btn ds-btn-secondary ds-btn-sm">
+      <i class="fa-solid fa-arrow-left"></i> Back to Rooms
+    </a>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 340px;gap:1.5rem;align-items:start;"
+     id="rg-layout">
+
+  <!-- ══ Left: Method form ══════════════════════════════════ -->
+  <div>
+
+    <!-- Method Tab Bar -->
+    <div class="ds-card" style="margin-bottom:1.25rem;">
+      <div class="ds-card-body" style="padding:1rem 1.25rem;">
+        <div style="display:flex;gap:0.375rem;flex-wrap:wrap;" id="method-tabs" role="tablist">
+          <button type="button" class="rg-tab active" data-tab="single" role="tab">
+            <i class="fa-solid fa-door-open fa-sm"></i> Single Room
+          </button>
+          <button type="button" class="rg-tab" data-tab="range" role="tab">
+            <i class="fa-solid fa-list-ol fa-sm"></i> Room Range
+          </button>
+          <button type="button" class="rg-tab" data-tab="floor" role="tab">
+            <i class="fa-solid fa-building fa-sm"></i> Floor Generator
+          </button>
+          <button type="button" class="rg-tab" data-tab="custom" role="tab">
+            <i class="fa-solid fa-pen-to-square fa-sm"></i> Custom List
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Shared form wraps all panels -->
+    <form method="post" id="rg-form">
+      {% csrf_token %}
+      <!-- Hidden: active method -->
+      <input type="hidden" name="method" id="rg-method-input" value="single">
+
+      <!-- ── Panel 1: Single Room ─────────────────────── -->
+      <div class="rg-panel ds-card" id="panel-single">
+        <div class="ds-card-header">
+          <div>
+            <div class="ds-card-title">Single Room</div>
+            <div class="ds-card-description">Add one room with its number and floor</div>
+          </div>
+          <span class="ds-badge ds-badge-info">1 room</span>
+        </div>
+        <div class="ds-card-body">
+          <div class="ds-form-grid ds-form-grid-2">
+
+            <div class="ds-form-field">
+              <label class="ds-form-label" for="id_number">
+                Room Number <span style="color:var(--ds-danger)">*</span>
+              </label>
+              <input type="text" id="id_number" name="number"
+                     class="ds-input" placeholder="e.g. 101"
+                     oninput="previewSingle()">
+              <p class="ds-form-help">Alphanumeric — e.g. 101, G5, Penthouse</p>
+            </div>
+
+            <div class="ds-form-field">
+              <label class="ds-form-label" for="id_floor">Floor</label>
+              <input type="text" id="id_floor" name="floor"
+                     class="ds-input" placeholder="e.g. 1"
+                     oninput="previewSingle()">
+              <p class="ds-form-help">Optional label for the floor</p>
+            </div>
+
+            <div class="ds-form-field ds-form-col-span-2">
+              <div class="ds-form-check">
+                <input type="checkbox" id="id_is_active" name="is_active" checked>
+                <label class="ds-form-check-label" for="id_is_active">Room is active</label>
+              </div>
+            </div>
+
+          </div>
+        </div>
+        <div class="ds-card-footer" style="justify-content:flex-end;">
+          <button type="submit" class="ds-btn ds-btn-primary" id="btn-single">
+            <i class="fa-solid fa-plus"></i> Create Room
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Panel 2: Room Range ──────────────────────── -->
+      <div class="rg-panel ds-card" id="panel-range" style="display:none;">
+        <div class="ds-card-header">
+          <div>
+            <div class="ds-card-title">Room Range Generator</div>
+            <div class="ds-card-description">Create a consecutive sequence of numbered rooms</div>
+          </div>
+          <span class="ds-badge ds-badge-info" id="range-count-badge">0 rooms</span>
+        </div>
+        <div class="ds-card-body">
+          <div class="ds-form-grid ds-form-grid-3">
+
+            <div class="ds-form-field">
+              <label class="ds-form-label" for="id_range_start">
+                Start Number <span style="color:var(--ds-danger)">*</span>
+              </label>
+              <input type="number" id="id_range_start" name="range_start"
+                     class="ds-input" placeholder="101" min="1"
+                     oninput="previewRange()">
+            </div>
+
+            <div class="ds-form-field">
+              <label class="ds-form-label" for="id_range_end">
+                End Number <span style="color:var(--ds-danger)">*</span>
+              </label>
+              <input type="number" id="id_range_end" name="range_end"
+                     class="ds-input" placeholder="120" min="1"
+                     oninput="previewRange()">
+            </div>
+
+            <div class="ds-form-field">
+              <label class="ds-form-label" for="id_range_floor">Floor Label</label>
+              <input type="text" id="id_range_floor" name="range_floor"
+                     class="ds-input" placeholder="e.g. 1"
+                     oninput="previewRange()">
+            </div>
+
+          </div>
+
+          <!-- Range example hint -->
+          <div id="range-hint" class="rg-hint" style="display:none;margin-top:1rem;">
+            <i class="fa-solid fa-circle-info" style="color:#6366f1;"></i>
+            <span id="range-hint-text"></span>
+          </div>
+        </div>
+        <div class="ds-card-footer" style="justify-content:flex-end;">
+          <button type="button" class="ds-btn ds-btn-secondary" onclick="previewRange(true)">
+            <i class="fa-solid fa-eye"></i> Preview
+          </button>
+          <button type="submit" class="ds-btn ds-btn-primary">
+            <i class="fa-solid fa-bolt"></i> Create All Rooms
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Panel 3: Floor Generator ─────────────────── -->
+      <div class="rg-panel ds-card" id="panel-floor" style="display:none;">
+        <div class="ds-card-header">
+          <div>
+            <div class="ds-card-title">Floor Generator</div>
+            <div class="ds-card-description">Generate rooms across multiple floors at once</div>
+          </div>
+          <span class="ds-badge ds-badge-info" id="floor-count-badge">0 rooms</span>
+        </div>
+        <div class="ds-card-body">
+          <div class="ds-form-grid ds-form-grid-3">
+
+            <div class="ds-form-field">
+              <label class="ds-form-label" for="id_floor_start">
+                Floor Start <span style="color:var(--ds-danger)">*</span>
+              </label>
+              <input type="number" id="id_floor_start" name="floor_start"
+                     class="ds-input" placeholder="1" min="1"
+                     oninput="previewFloor()">
+            </div>
+
+            <div class="ds-form-field">
+              <label class="ds-form-label" for="id_floor_end">
+                Floor End <span style="color:var(--ds-danger)">*</span>
+              </label>
+              <input type="number" id="id_floor_end" name="floor_end"
+                     class="ds-input" placeholder="5" min="1"
+                     oninput="previewFloor()">
+            </div>
+
+            <div class="ds-form-field">
+              <label class="ds-form-label" for="id_rooms_per_floor">
+                Rooms / Floor <span style="color:var(--ds-danger)">*</span>
+              </label>
+              <input type="number" id="id_rooms_per_floor" name="rooms_per_floor"
+                     class="ds-input" placeholder="10" min="1" max="99"
+                     oninput="previewFloor()">
+            </div>
+
+          </div>
+
+          <!-- Format selector -->
+          <div style="margin-top:1.25rem;">
+            <label class="ds-form-label">Numbering Format</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-top:0.5rem;">
+
+              <label class="rg-format-card" id="fmt-A-card">
+                <input type="radio" name="floor_format" value="A" checked
+                       onchange="previewFloor()" style="display:none;">
+                <div class="rg-format-inner" id="fmt-A-inner">
+                  <div style="font-weight:600;font-size:0.875rem;color:#111827;">Format A — Numeric</div>
+                  <div style="font-size:0.8125rem;color:#6b7280;margin-top:0.25rem;">
+                    Floor × 100 + Room Number
+                  </div>
+                  <div class="rg-format-example">101, 102 … 201, 202</div>
+                </div>
+              </label>
+
+              <label class="rg-format-card" id="fmt-B-card">
+                <input type="radio" name="floor_format" value="B"
+                       onchange="previewFloor()" style="display:none;">
+                <div class="rg-format-inner" id="fmt-B-inner">
+                  <div style="font-weight:600;font-size:0.875rem;color:#111827;">Format B — Alpha</div>
+                  <div style="font-size:0.8125rem;color:#6b7280;margin-top:0.25rem;">
+                    Floor letter + Room Number
+                  </div>
+                  <div class="rg-format-example">A1, A2 … B1, B2</div>
+                </div>
+              </label>
+
+            </div>
+          </div>
+
+          <div id="floor-hint" class="rg-hint" style="display:none;margin-top:1rem;">
+            <i class="fa-solid fa-circle-info" style="color:#6366f1;"></i>
+            <span id="floor-hint-text"></span>
+          </div>
+
+        </div>
+        <div class="ds-card-footer" style="justify-content:flex-end;">
+          <button type="button" class="ds-btn ds-btn-secondary" onclick="previewFloor(true)">
+            <i class="fa-solid fa-eye"></i> Preview
+          </button>
+          <button type="submit" class="ds-btn ds-btn-primary">
+            <i class="fa-solid fa-bolt"></i> Create All Rooms
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Panel 4: Custom List ─────────────────────── -->
+      <div class="rg-panel ds-card" id="panel-custom" style="display:none;">
+        <div class="ds-card-header">
+          <div>
+            <div class="ds-card-title">Custom Room List</div>
+            <div class="ds-card-description">Paste your own list — comma or line-separated</div>
+          </div>
+          <span class="ds-badge ds-badge-info" id="custom-count-badge">0 rooms</span>
+        </div>
+        <div class="ds-card-body">
+
+          <div class="ds-form-field" style="margin-bottom:1.25rem;">
+            <label class="ds-form-label" for="id_custom_list">
+              Room Numbers <span style="color:var(--ds-danger)">*</span>
+            </label>
+            <textarea id="id_custom_list" name="custom_list" rows="7"
+                      class="ds-input" style="font-family:monospace;font-size:0.875rem;"
+                      placeholder="101, 102, 103&#10;201, 202, 203&#10;301"
+                      oninput="previewCustom()"></textarea>
+            <p class="ds-form-help">Separate by commas, spaces, or new lines. Max 500 rooms.</p>
+          </div>
+
+          <div class="ds-form-field">
+            <label class="ds-form-label" for="id_custom_floor">Floor Label (optional)</label>
+            <input type="text" id="id_custom_floor" name="custom_floor"
+                   class="ds-input" placeholder="e.g. Mixed" style="max-width:16rem;"
+                   oninput="previewCustom()">
+            <p class="ds-form-help">Applied to all rooms in this list</p>
+          </div>
+
+        </div>
+        <div class="ds-card-footer" style="justify-content:flex-end;">
+          <button type="button" class="ds-btn ds-btn-secondary" onclick="previewCustom(true)">
+            <i class="fa-solid fa-eye"></i> Preview
+          </button>
+          <button type="submit" class="ds-btn ds-btn-primary">
+            <i class="fa-solid fa-bolt"></i> Create All Rooms
+          </button>
+        </div>
+      </div>
+
+    </form>
+  </div>
+  <!-- ══ end left col ══ -->
+
+  <!-- ══ Right: Preview Panel ══════════════════════════════ -->
+  <div id="rg-preview-col">
+
+    <!-- Empty state -->
+    <div class="ds-card" id="preview-empty">
+      <div class="ds-card-body" style="text-align:center;padding:2.5rem 1.5rem;">
+        <div style="font-size:2rem;margin-bottom:0.75rem;opacity:.35;">
+          <i class="fa-solid fa-eye"></i>
+        </div>
+        <div style="font-size:0.875rem;color:#9ca3af;font-weight:500;">Preview will appear here</div>
+        <div style="font-size:0.8125rem;color:#d1d5db;margin-top:0.25rem;">
+          Fill in the form or click Preview
+        </div>
+      </div>
+    </div>
+
+    <!-- Preview filled -->
+    <div class="ds-card" id="preview-filled" style="display:none;">
+      <div class="ds-card-header">
+        <div>
+          <div class="ds-card-title">Preview</div>
+          <div class="ds-card-description" id="preview-subtitle">0 rooms to create</div>
+        </div>
+        <button type="button" class="ds-btn ds-btn-ghost ds-btn-sm" onclick="clearPreview()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="ds-card-body" style="padding:1rem 1.25rem;">
+        <div id="preview-chips" style="display:flex;flex-wrap:wrap;gap:0.375rem;max-height:320px;overflow-y:auto;"></div>
+        <div id="preview-truncated"
+             style="display:none;margin-top:0.75rem;font-size:0.8125rem;color:#9ca3af;text-align:center;">
+        </div>
+      </div>
+      <div class="ds-card-footer" style="justify-content:center;">
+        <button type="button" onclick="submitFromPreview()"
+                class="ds-btn ds-btn-primary" style="width:100%;">
+          <i class="fa-solid fa-bolt"></i>
+          <span id="preview-btn-label">Create All Rooms</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Tips card -->
+    <div class="ds-card" style="margin-top:1rem;">
+      <div class="ds-card-header">
+        <div class="ds-card-title" style="font-size:0.8125rem;">
+          <i class="fa-solid fa-lightbulb" style="color:#f59e0b;"></i> Tips
+        </div>
+      </div>
+      <div class="ds-card-body" style="padding:0.875rem 1.25rem;">
+        <ul style="font-size:0.8125rem;color:#6b7280;line-height:1.7;margin:0;padding-left:1.1rem;">
+          <li>Rooms that already exist are <strong>skipped</strong> automatically.</li>
+          <li>Use <strong>Range</strong> to add 101–220 in seconds.</li>
+          <li>Use <strong>Floor Generator</strong> to set up an entire hotel structure.</li>
+          <li>Use <strong>Custom List</strong> for irregular room numbers.</li>
+          <li>Max <strong>500 rooms</strong> per batch.</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+  <!-- ══ end right col ══ -->
+
+</div>
+
+<!-- ─────────────────── Styles ─────────────────── -->
+<style>
+/* Tab buttons */
+.rg-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.rg-tab:hover  { background: #f3f4f6; color: #374151; }
+.rg-tab.active {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(79,70,229,.35);
+}
+
+/* Format selector cards */
+.rg-format-card {
+  cursor: pointer;
+  display: block;
+}
+.rg-format-inner {
+  border: 2px solid #e5e7eb;
+  border-radius: 0.625rem;
+  padding: 0.875rem 1rem;
+  transition: all 0.15s;
+  background: #fff;
+}
+.rg-format-card:has(input:checked) .rg-format-inner {
+  border-color: #6366f1;
+  background: #eef2ff;
+  box-shadow: 0 0 0 3px rgba(99,102,241,.1);
+}
+.rg-format-example {
+  margin-top: 0.5rem;
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: #4f46e5;
+  background: #e0e7ff;
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+/* Preview room chips */
+.rg-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-family: monospace;
+  background: #f3f4f6;
+  color: #374151;
+  border-radius: 0.375rem;
+  border: 1px solid #e5e7eb;
+}
+
+/* Info hint */
+.rg-hint {
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.8125rem;
+  color: #4338ca;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+/* Responsive: stack on mobile */
+@media (max-width: 900px) {
+  #rg-layout {
+    grid-template-columns: 1fr !important;
+  }
+}
+</style>
+
+<!-- ─────────────────── JS ─────────────────── -->
+<script>
+// ── Tab switching ──────────────────────────────────
+document.querySelectorAll('.rg-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    // update tab styles
+    document.querySelectorAll('.rg-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    // show/hide panels
+    document.querySelectorAll('.rg-panel').forEach(p => p.style.display = 'none');
+    document.getElementById('panel-' + tab).style.display = 'block';
+    // update hidden method input
+    document.getElementById('rg-method-input').value = tab;
+    clearPreview();
+  });
+});
+
+// ── Preview helpers ────────────────────────────────
+const MAX_CHIPS = 120;
+
+function showPreview(rooms) {
+  if (!rooms.length) { clearPreview(); return; }
+  const el    = document.getElementById('preview-chips');
+  const trunc = document.getElementById('preview-truncated');
+  const sub   = document.getElementById('preview-subtitle');
+  const btnLbl= document.getElementById('preview-btn-label');
+  const badge = getActiveBadge();
+
+  const shown = rooms.slice(0, MAX_CHIPS);
+  el.innerHTML = shown.map(n =>
+    `<span class="rg-chip">${escHtml(n)}</span>`
+  ).join('');
+
+  if (rooms.length > MAX_CHIPS) {
+    trunc.style.display = 'block';
+    trunc.textContent   = `+ ${rooms.length - MAX_CHIPS} more rooms not shown`;
+  } else {
+    trunc.style.display = 'none';
+  }
+
+  sub.textContent    = `${rooms.length} room${rooms.length !== 1 ? 's' : ''} to create`;
+  btnLbl.textContent = `Create ${rooms.length} Room${rooms.length !== 1 ? 's' : ''}`;
+  if (badge) badge.textContent = rooms.length + ' room' + (rooms.length !== 1 ? 's' : '');
+
+  document.getElementById('preview-empty').style.display  = 'none';
+  document.getElementById('preview-filled').style.display = 'block';
+}
+
+function clearPreview() {
+  document.getElementById('preview-empty').style.display  = 'block';
+  document.getElementById('preview-filled').style.display = 'none';
+}
+
+function getActiveBadge() {
+  const tab = document.getElementById('rg-method-input').value;
+  const map  = { range: 'range-count-badge', floor: 'floor-count-badge', custom: 'custom-count-badge' };
+  return map[tab] ? document.getElementById(map[tab]) : null;
+}
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function submitFromPreview() {
+  document.getElementById('rg-form').submit();
+}
+
+// ── Method 1: Single preview ───────────────────────
+function previewSingle() {
+  const num = document.getElementById('id_number').value.trim();
+  if (num) showPreview([num]); else clearPreview();
+}
+
+// ── Method 2: Range preview ────────────────────────
+function previewRange(force) {
+  const start = parseInt(document.getElementById('id_range_start').value);
+  const end   = parseInt(document.getElementById('id_range_end').value);
+  const hint  = document.getElementById('range-hint');
+  const hintT = document.getElementById('range-hint-text');
+
+  if (isNaN(start) || isNaN(end)) { clearPreview(); hint.style.display='none'; return; }
+
+  if (start > end) {
+    hintT.textContent = 'Start must be ≤ End.';
+    hint.style.display = 'flex';
+    clearPreview(); return;
+  }
+  const count = end - start + 1;
+  if (count > 500) {
+    hintT.textContent = `Range of ${count} exceeds the 500-room limit.`;
+    hint.style.display = 'flex';
+    clearPreview(); return;
+  }
+
+  hint.style.display = 'flex';
+  hintT.textContent  = `Will create rooms ${start} through ${end} (${count} total)`;
+
+  if (force || count <= 50) {
+    const rooms = [];
+    for (let n = start; n <= end; n++) rooms.push(String(n));
+    showPreview(rooms);
+  } else {
+    // Auto-preview only if ≤ 50; require button click for larger ranges
+    const b = getActiveBadge();
+    if (b) b.textContent = count + ' rooms';
+  }
+}
+
+// ── Method 3: Floor generator preview ─────────────
+function previewFloor(force) {
+  const fStart = parseInt(document.getElementById('id_floor_start').value);
+  const fEnd   = parseInt(document.getElementById('id_floor_end').value);
+  const rpf    = parseInt(document.getElementById('id_rooms_per_floor').value);
+  const fmt    = document.querySelector('input[name="floor_format"]:checked')?.value || 'A';
+  const hint   = document.getElementById('floor-hint');
+  const hintT  = document.getElementById('floor-hint-text');
+
+  if (isNaN(fStart) || isNaN(fEnd) || isNaN(rpf)) {
+    clearPreview(); hint.style.display='none'; return;
+  }
+  if (fStart > fEnd) {
+    hintT.textContent = 'Floor start must be ≤ Floor end.'; hint.style.display='flex';
+    clearPreview(); return;
+  }
+  if (rpf < 1 || rpf > 99) {
+    hintT.textContent = 'Rooms per floor must be 1–99.'; hint.style.display='flex';
+    clearPreview(); return;
+  }
+
+  const total = (fEnd - fStart + 1) * rpf;
+  if (total > 500) {
+    hintT.textContent = `${total} rooms exceeds the 500-room limit.`; hint.style.display='flex';
+    clearPreview(); return;
+  }
+
+  hint.style.display = 'flex';
+  hintT.textContent  = `${fEnd - fStart + 1} floor(s) × ${rpf} rooms = ${total} rooms total`;
+
+  if (force || total <= 60) {
+    const rooms = [];
+    for (let f = fStart; f <= fEnd; f++) {
+      for (let r = 1; r <= rpf; r++) {
+        if (fmt === 'A') {
+          rooms.push(String(f) + String(r).padStart(2, '0'));
+        } else {
+          const letter = String.fromCharCode(65 + (f - fStart));
+          rooms.push(letter + r);
+        }
+      }
+    }
+    showPreview(rooms);
+  } else {
+    const b = getActiveBadge();
+    if (b) b.textContent = total + ' rooms';
+  }
+
+  // Update format card visual if :has() not supported
+  ['A','B'].forEach(v => {
+    const inner = document.getElementById('fmt-' + v + '-inner');
+    if (!inner) return;
+    if (fmt === v) {
+      inner.style.borderColor = '#6366f1';
+      inner.style.background  = '#eef2ff';
+    } else {
+      inner.style.borderColor = '#e5e7eb';
+      inner.style.background  = '#fff';
+    }
+  });
+}
+
+// ── Method 4: Custom list preview ─────────────────
+function previewCustom(force) {
+  const raw   = document.getElementById('id_custom_list').value;
+  const nums  = raw.replace(/\n/g,',').replace(/;/g,',')
+                   .split(',').map(s => s.trim()).filter(Boolean);
+  const unique = [...new Set(nums)];
+  const badge  = document.getElementById('custom-count-badge');
+
+  if (!unique.length) { clearPreview(); if(badge) badge.textContent='0 rooms'; return; }
+  if (badge) badge.textContent = unique.length + ' room' + (unique.length !== 1 ? 's' : '');
+
+  if (force || unique.length <= 80) {
+    showPreview(unique);
+  }
+}
+
+// ── Format card click fallback (for browsers without :has()) ──
+document.querySelectorAll('input[name="floor_format"]').forEach(radio => {
+  radio.addEventListener('change', previewFloor);
+});
+</script>
+
+{% endblock %}

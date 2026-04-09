@@ -1,25 +1,100 @@
-{% extends "base.html" %}
-{% block title %}Login — Scan2Service{% endblock %}
+{% extends "base_auth.html" %}
+{% load static %}
+
+{% block title %}Sign In — Scan2Service{% endblock %}
+
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-5">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h4 class="mb-3">Login</h4>
-        <form method="post">
-          {% csrf_token %}
-          <div class="mb-3">
-            <label class="form-label">Username</label>
-            <input name="username" class="form-control" autofocus>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Password</label>
-            <input name="password" type="password" class="form-control">
-          </div>
-          <button class="btn btn-primary">Login</button>
-        </form>
+<section class="">
+  <div class="container max-w-full">
+    <div class="row min-h-screen">
+
+      <!-- Left: Form panel -->
+      <div class="bg-white py-10 lg:col-6 lg:py-[80px]">
+        <div class="mx-auto w-full max-w-[480px] px-6">
+
+          <!-- Logo -->
+          <a href="{% url 'home' %}" class="mb-8 inline-block">
+            <span style="font-size:1.5rem;font-weight:700;color:#4f46e5;">Scan2Service</span>
+          </a>
+
+          <h1 class="mb-2 text-3xl font-bold">Welcome back</h1>
+          <p class="mb-8 text-gray-500">Sign in to your hotel dashboard</p>
+
+          <!-- Non-field errors -->
+          {% if form.errors %}
+            <div class="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              Invalid username or password. Please try again.
+            </div>
+          {% endif %}
+
+          <!-- Django messages -->
+          {% if messages %}
+            {% for message in messages %}
+              <div class="mb-4 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+                {{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="form-group">
+              <label for="id_username" class="form-label">Username</label>
+              <input
+                type="text"
+                id="id_username"
+                name="username"
+                class="form-control"
+                placeholder="Your username"
+                autofocus
+                autocomplete="username"
+                value="{{ form.username.value|default:'' }}"
+              />
+            </div>
+
+            <div class="form-group mt-4">
+              <label for="id_password" class="form-label">Password</label>
+              <input
+                type="password"
+                id="id_password"
+                name="password"
+                class="form-control"
+                placeholder="Your password"
+                autocomplete="current-password"
+              />
+            </div>
+
+            <!-- Hidden next field -->
+            {% if next %}
+              <input type="hidden" name="next" value="{{ next }}" />
+            {% endif %}
+
+            <input
+              class="btn btn-primary mt-8 block w-full cursor-pointer"
+              type="submit"
+              value="Sign In"
+            />
+
+            <p class="mt-6 text-center text-sm text-gray-500">
+              Don't have an account?
+              <a class="text-primary font-medium" href="{% url 'signup' %}">Sign up free</a>
+            </p>
+          </form>
+
+        </div>
       </div>
+
+      <!-- Right: Promo panel -->
+      <div class="hidden lg:flex lg:col-6 items-center justify-center overflow-hidden p-0" style="background:#f8f8f8;">
+        <img
+          class="h-full w-full object-contain"
+          src="/media/chatgpt/si_s2s.png"
+          alt="Scan2Service dashboard"
+        />
+      </div>
+
     </div>
   </div>
-</div>
+</section>
 {% endblock %}

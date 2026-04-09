@@ -1,25 +1,166 @@
-{% extends "base.html" %}
-{% block title %}Hotel Portal — {{ request.user.hotel.name }}{% endblock %}
+{% extends "base_portal.html" %}
+{% block title %}Dashboard — {{ request.user.hotel.name }}{% endblock %}
+
+{% block topbar_breadcrumb %}
+<a href="{% url 'portal_home' %}" class="hover:text-indigo-600">Portal</a>
+<span class="text-gray-300">/</span>
+<span class="font-medium text-gray-700">Dashboard</span>
+{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <div class="d-flex align-items-center">
-    {% if request.user.hotel.logo %}
-      <img src="{{ request.user.hotel.logo.url }}" alt="Logo"
-           style="height:40px; width:auto; margin-right:10px; border-radius:6px;">
-    {% endif %}
-    <h3 class="mb-0">{{ request.user.hotel.name }}</h3>
-    {% if request.user.hotel.city %}
-      <span class="text-muted ms-2">({{ request.user.hotel.city }})</span>
-    {% endif %}
+
+<!-- Page Header -->
+<div class="ds-page-header">
+  <div class="ds-page-header-left">
+    <div style="display:flex;align-items:center;gap:0.75rem;">
+      {% if request.user.hotel.logo %}
+        <img src="{{ request.user.hotel.logo.url }}" alt="Logo"
+             style="height:2.25rem;width:auto;border-radius:0.5rem;flex-shrink:0;">
+      {% endif %}
+      <div>
+        <h1 class="ds-page-title">{{ request.user.hotel.name }}</h1>
+        <p class="ds-page-subtitle">
+          Welcome back, <strong>{{ request.user.username }}</strong>
+          {% if request.user.hotel.city %} · {{ request.user.hotel.city }}{% endif %}
+        </p>
+      </div>
+    </div>
   </div>
-  
+  <div class="ds-page-header-actions">
+    <a href="{% url 'live_board' %}" class="ds-btn ds-btn-primary-soft">
+      <i class="fa-solid fa-tower-broadcast fa-sm"></i> Live Board
+    </a>
+  </div>
 </div>
 
-<p class="text-muted">Welcome back, {{ request.user.username }} — Hotel Portal</p>
+<!-- Stats Cards -->
+<div class="ds-stats-grid">
+  <div class="ds-stat-card ds-stat-card-indigo">
+    <div class="ds-stat-icon ds-stat-icon-indigo">
+      <i class="fa-solid fa-door-open"></i>
+    </div>
+    <div class="ds-stat-label">Total Rooms</div>
+    <div class="ds-stat-value">{{ stats.total_rooms|default:"—" }}</div>
+    <div class="ds-stat-meta">{{ stats.active_rooms|default:"0" }} active</div>
+  </div>
 
-<ul>
-  <li><a href="/portal/rooms/">Manage Rooms</a></li>
-  <li><a href="/portal/rooms/qr/print/">Print Room QRs</a></li>
-  <li><a href="/portal/staff/">Manage Staff</a></li>
-</ul>
+  <div class="ds-stat-card ds-stat-card-green">
+    <div class="ds-stat-icon ds-stat-icon-green">
+      <i class="fa-solid fa-user-check"></i>
+    </div>
+    <div class="ds-stat-label">Active Stays</div>
+    <div class="ds-stat-value">{{ stats.active_stays|default:"0" }}</div>
+    <div class="ds-stat-meta">Guests checked in</div>
+  </div>
+
+  <div class="ds-stat-card ds-stat-card-amber">
+    <div class="ds-stat-icon ds-stat-icon-amber">
+      <i class="fa-solid fa-bell-concierge"></i>
+    </div>
+    <div class="ds-stat-label">Open Requests</div>
+    <div class="ds-stat-value">{{ stats.open_requests|default:"0" }}</div>
+    <div class="ds-stat-meta">Pending fulfilment</div>
+  </div>
+
+  <div class="ds-stat-card ds-stat-card-blue">
+    <div class="ds-stat-icon ds-stat-icon-blue">
+      <i class="fa-solid fa-receipt"></i>
+    </div>
+    <div class="ds-stat-label">Unbilled</div>
+    <div class="ds-stat-value">{{ stats.unpaid_count|default:"0" }}</div>
+    <div class="ds-stat-meta">Stays with balance due</div>
+  </div>
+</div>
+
+<!-- Quick Links -->
+<div class="ds-section">
+  <div class="ds-nav-grid">
+
+    <a href="{% url 'rooms_list' %}" class="ds-nav-card">
+      <div class="ds-nav-card-icon ds-stat-icon-indigo">
+        <i class="fa-solid fa-door-open"></i>
+      </div>
+      <div>
+        <div class="ds-nav-card-title">Rooms</div>
+        <div class="ds-nav-card-desc">Manage rooms & QR codes</div>
+      </div>
+      <i class="fa-solid fa-chevron-right ds-nav-card-arrow"></i>
+    </a>
+
+    <a href="{% url 'portal_stays_history' %}" class="ds-nav-card">
+      <div class="ds-nav-card-icon ds-stat-icon-green">
+        <i class="fa-solid fa-user-check"></i>
+      </div>
+      <div>
+        <div class="ds-nav-card-title">Stays</div>
+        <div class="ds-nav-card-desc">Check-ins, checkouts, history</div>
+      </div>
+      <i class="fa-solid fa-chevron-right ds-nav-card-arrow"></i>
+    </a>
+
+    <a href="{% url 'portal_requests_history' %}" class="ds-nav-card">
+      <div class="ds-nav-card-icon ds-stat-icon-amber">
+        <i class="fa-solid fa-bell-concierge"></i>
+      </div>
+      <div>
+        <div class="ds-nav-card-title">Requests</div>
+        <div class="ds-nav-card-desc">Guest service requests</div>
+      </div>
+      <i class="fa-solid fa-chevron-right ds-nav-card-arrow"></i>
+    </a>
+
+    <a href="{% url 'portal_billing_list' %}" class="ds-nav-card">
+      <div class="ds-nav-card-icon ds-stat-icon-blue">
+        <i class="fa-solid fa-receipt"></i>
+      </div>
+      <div>
+        <div class="ds-nav-card-title">Billing</div>
+        <div class="ds-nav-card-desc">Invoices & payment records</div>
+      </div>
+      <i class="fa-solid fa-chevron-right ds-nav-card-arrow"></i>
+    </a>
+
+    <a href="{% url 'items_list' %}" class="ds-nav-card">
+      <div class="ds-nav-card-icon ds-stat-icon-indigo">
+        <i class="fa-solid fa-utensils"></i>
+      </div>
+      <div>
+        <div class="ds-nav-card-title">Menu &amp; Items</div>
+        <div class="ds-nav-card-desc">Food, services, categories</div>
+      </div>
+      <i class="fa-solid fa-chevron-right ds-nav-card-arrow"></i>
+    </a>
+
+    <a href="{% url 'staff_list' %}" class="ds-nav-card">
+      <div class="ds-nav-card-icon ds-stat-icon-green">
+        <i class="fa-solid fa-users"></i>
+      </div>
+      <div>
+        <div class="ds-nav-card-title">Staff</div>
+        <div class="ds-nav-card-desc">Manage staff accounts</div>
+      </div>
+      <i class="fa-solid fa-chevron-right ds-nav-card-arrow"></i>
+    </a>
+
+  </div>
+</div>
+
+<!-- Utility Links -->
+<div class="ds-card">
+  <div class="ds-card-header">
+    <div class="ds-card-title">Quick Actions</div>
+  </div>
+  <div class="ds-card-body" style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+    <a href="{% url 'rooms_qr_sheet' %}" class="ds-btn ds-btn-secondary ds-btn-sm" target="_blank">
+      <i class="fa-solid fa-qrcode"></i> Print Room QRs
+    </a>
+    <a href="{% url 'portal_settings' %}" class="ds-btn ds-btn-secondary ds-btn-sm">
+      <i class="fa-solid fa-gear"></i> Hotel Settings
+    </a>
+    <a href="{% url 'settings_invoice' %}" class="ds-btn ds-btn-secondary ds-btn-sm">
+      <i class="fa-solid fa-file-invoice"></i> Invoice Settings
+    </a>
+  </div>
+</div>
+
 {% endblock %}

@@ -62,6 +62,29 @@ class Stay(models.Model):
     guest_name = models.CharField(max_length=120)
     phone = models.CharField(max_length=20)
 
+    # Optional guest details (collected at check-in)
+    ID_TYPE_CHOICES = (
+        ("AADHAAR", "Aadhaar"),
+        ("PASSPORT", "Passport"),
+        ("DL", "Driving License"),
+        ("OTHER", "Other"),
+    )
+    GENDER_CHOICES = (
+        ("M", "Male"),
+        ("F", "Female"),
+        ("O", "Other"),
+    )
+    id_type          = models.CharField(max_length=10, blank=True, default="", choices=ID_TYPE_CHOICES)
+    id_number        = models.CharField(max_length=50, blank=True, default="")
+    aadhaar_number   = models.CharField(max_length=12, blank=True, default="")
+    age              = models.PositiveSmallIntegerField(null=True, blank=True)
+    gender           = models.CharField(max_length=1, blank=True, default="", choices=GENDER_CHOICES)
+    city             = models.CharField(max_length=100, blank=True, default="")
+    state            = models.CharField(max_length=100, blank=True, default="")
+    address          = models.TextField(blank=True, default="")
+    id_proof         = models.FileField(upload_to="id_proofs/", null=True, blank=True)
+    signature_data   = models.TextField(blank=True, default="")
+
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="ACTIVE")
     check_in_at = models.DateTimeField(auto_now_add=True)
     check_out_at = models.DateTimeField(null=True, blank=True)

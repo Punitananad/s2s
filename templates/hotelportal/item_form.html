@@ -1,74 +1,151 @@
-{% extends "base.html" %}
+{% extends "base_portal.html" %}
 {% block title %}{{ mode|capfirst }} Item — Scan2Service{% endblock %}
+
+{% block topbar_breadcrumb %}
+<a href="{% url 'portal_home' %}" class="hover:text-indigo-600">Portal</a>
+<span class="text-gray-300">/</span>
+<a href="{% url 'items_list' %}" class="hover:text-indigo-600">Items</a>
+<span class="text-gray-300">/</span>
+<span class="font-medium text-gray-700">{{ mode|capfirst }}</span>
+{% endblock %}
+
 {% block content %}
 
-<form method="post" enctype="multipart/form-data">
-  {% csrf_token %}
+<!-- Page Header -->
+<div class="ds-page-header">
+  <div>
+    <h1 class="ds-page-title">{{ mode|capfirst }} Item</h1>
+    <p class="ds-page-subtitle">
+      {% if mode == "edit" %}Update item details, pricing and availability.
+      {% else %}Add a new food or service item to your menu.{% endif %}
+    </p>
+  </div>
+</div>
 
-  {% if form.non_field_errors %}
-    <div class="alert alert-danger py-2">{{ form.non_field_errors }}</div>
-  {% endif %}
-  {% for field in form %}
-    {% for err in field.errors %}
-      <div class="alert alert-danger py-2">{{ field.label }}: {{ err }}</div>
-    {% endfor %}
-  {% endfor %}
-<div class="row justify-content-center">
-  <div class="col-md-8 col-lg-7">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h4 class="mb-3">{{ mode|capfirst }} Item</h4>
-        <form method="post" enctype="multipart/form-data">
-          {% csrf_token %}
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label">Category</label>
-              {{ form.category }}
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Name</label>
-              {{ form.name }}
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Price</label>
-              {{ form.price }}
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Unit</label>
-              {{ form.unit }}
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Position</label>
-              {{ form.position }}
-            </div>
-            <div class="col-12">
-              <label class="form-label">Description</label>
-              {{ form.description }}
-            </div>
+<!-- Error summary (non-field + field errors) -->
+{% if form.non_field_errors or form.errors %}
+  <div class="ds-card" style="border-color:#fca5a5;background:#fef2f2;margin-bottom:1.25rem;">
+    <div class="ds-card-body" style="padding:1rem 1.25rem;">
+      <p style="font-size:0.875rem;font-weight:600;color:#b91c1c;margin-bottom:0.5rem;">
+        <i class="fa-solid fa-circle-xmark"></i> Please fix the errors below
+      </p>
+      {% if form.non_field_errors %}
+        <p style="font-size:0.8125rem;color:#b91c1c;">{{ form.non_field_errors }}</p>
+      {% endif %}
+      {% for field in form %}
+        {% for err in field.errors %}
+          <p style="font-size:0.8125rem;color:#b91c1c;">{{ field.label }}: {{ err }}</p>
+        {% endfor %}
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
 
-            <div class="col-12"><hr></div>
+<div style="max-width:52rem;">
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
 
-            <div class="col-md-6">
-              <label class="form-label">Choose existing photo</label>
-              {{ form.image_existing }}
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Or upload new photo</label>
-              {{ form.image_upload }}
-            </div>
+    <!-- Core Details Card -->
+    <div class="ds-card">
+      <div class="ds-card-header">
+        <div class="ds-card-title">Item Details</div>
+      </div>
+      <div class="ds-card-body">
+        <div class="ds-form-grid ds-form-grid-2">
 
-            <div class="col-12">
-              <div class="form-check mt-2">
-                {{ form.is_available }} <label class="form-check-label ms-1">Available</label>
-              </div>
+          <div class="ds-form-field">
+            <label class="ds-form-label" for="{{ form.category.id_for_label }}">
+              Category <span style="color:var(--ds-danger)">*</span>
+            </label>
+            {{ form.category }}
+            {% for e in form.category.errors %}<p class="ds-form-error">{{ e }}</p>{% endfor %}
+          </div>
+
+          <div class="ds-form-field">
+            <label class="ds-form-label" for="{{ form.name.id_for_label }}">
+              Name <span style="color:var(--ds-danger)">*</span>
+            </label>
+            {{ form.name }}
+            {% for e in form.name.errors %}<p class="ds-form-error">{{ e }}</p>{% endfor %}
+          </div>
+
+          <div class="ds-form-field">
+            <label class="ds-form-label" for="{{ form.price.id_for_label }}">
+              Price (₹) <span style="color:var(--ds-danger)">*</span>
+            </label>
+            {{ form.price }}
+            {% for e in form.price.errors %}<p class="ds-form-error">{{ e }}</p>{% endfor %}
+          </div>
+
+          <div class="ds-form-field">
+            <label class="ds-form-label" for="{{ form.unit.id_for_label }}">Unit</label>
+            {{ form.unit }}
+            {% for e in form.unit.errors %}<p class="ds-form-error">{{ e }}</p>{% endfor %}
+            <p class="ds-form-help">e.g. plate, glass, piece, session</p>
+          </div>
+
+          <div class="ds-form-field">
+            <label class="ds-form-label" for="{{ form.position.id_for_label }}">Position</label>
+            {{ form.position }}
+            {% for e in form.position.errors %}<p class="ds-form-error">{{ e }}</p>{% endfor %}
+            <p class="ds-form-help">Display order (lower = first)</p>
+          </div>
+
+          <div class="ds-form-field ds-form-col-span-2">
+            <label class="ds-form-label" for="{{ form.description.id_for_label }}">Description</label>
+            {{ form.description }}
+            {% for e in form.description.errors %}<p class="ds-form-error">{{ e }}</p>{% endfor %}
+          </div>
+
+          <div class="ds-form-field ds-form-col-span-2">
+            <div class="ds-form-check">
+              {{ form.is_available }}
+              <label class="ds-form-check-label" for="{{ form.is_available.id_for_label }}">
+                Item is available to guests
+              </label>
             </div>
           </div>
 
-          <button class="btn btn-success mt-3">Save</button>
-          <a href="{% url 'items_list' %}" class="btn btn-link">Cancel</a>
-        </form>
+        </div>
       </div>
     </div>
-  </div>
+
+    <!-- Photo Card -->
+    <div class="ds-card">
+      <div class="ds-card-header">
+        <div class="ds-card-title">Photo</div>
+        <div class="ds-card-description">Choose an existing image or upload a new one</div>
+      </div>
+      <div class="ds-card-body">
+        <div class="ds-form-grid ds-form-grid-2">
+          <div class="ds-form-field">
+            <label class="ds-form-label" for="{{ form.image_existing.id_for_label }}">
+              Choose existing photo
+            </label>
+            {{ form.image_existing }}
+            {% for e in form.image_existing.errors %}<p class="ds-form-error">{{ e }}</p>{% endfor %}
+          </div>
+          <div class="ds-form-field">
+            <label class="ds-form-label" for="{{ form.image_upload.id_for_label }}">
+              Or upload new photo
+            </label>
+            {{ form.image_upload }}
+            {% for e in form.image_upload.errors %}<p class="ds-form-error">{{ e }}</p>{% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex;justify-content:flex-end;gap:0.625rem;margin-top:1.25rem;">
+      <a href="{% url 'items_list' %}" class="ds-btn ds-btn-ghost">Cancel</a>
+      <button type="submit" class="ds-btn ds-btn-primary">
+        <i class="fa-solid fa-check"></i>
+        {% if mode == "edit" %}Save Changes{% else %}Create Item{% endif %}
+      </button>
+    </div>
+
+  </form>
 </div>
+
 {% endblock %}

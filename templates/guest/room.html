@@ -179,9 +179,71 @@
     font-size: 0.85rem;
     font-weight: 500;
   }
+
+  /* ── Order confirmation banner ── */
+  #order-banner {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1070;           /* above Bootstrap modal (1055) and backdrop (1040) */
+    padding: 0.85rem 1rem;
+    color: #fff;
+    font-size: 0.93rem;
+    font-weight: 500;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    animation: bannerSlideIn 0.3s ease;
+  }
+  #order-banner.food-banner    { background: linear-gradient(90deg, #198754, #20c997); }
+  #order-banner.service-banner { background: linear-gradient(90deg, #0d6efd, #6ea8fe); }
+  #order-banner .banner-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  #order-banner .banner-close {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.85);
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+  }
+  #order-banner .banner-progress {
+    height: 3px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 999px;
+    margin-top: 0.4rem;
+    overflow: hidden;
+  }
+  #order-banner .banner-progress-fill {
+    height: 100%;
+    background: rgba(255,255,255,0.85);
+    border-radius: 999px;
+    width: 100%;
+  }
+  @keyframes bannerSlideIn {
+    from { transform: translateY(-100%); opacity: 0; }
+    to   { transform: translateY(0);     opacity: 1; }
+  }
 </style>
 
 <div class="guest-shell">
+
+  <!-- Order confirmation banner -->
+  <div id="order-banner">
+    <div class="banner-inner">
+      <span id="order-banner-msg"></span>
+      <button class="banner-close" id="order-banner-close" aria-label="Dismiss">✕</button>
+    </div>
+    <div class="banner-progress"><div class="banner-progress-fill" id="banner-progress-fill"></div></div>
+  </div>
 
   <!-- Header -->
   <div class="mb-3">
@@ -588,6 +650,59 @@
     const myServicesBody  = document.getElementById("my-services-body");
     const myServicesModal = myServicesModalEl && window.bootstrap ? new bootstrap.Modal(myServicesModalEl) : null;
 
+    // ── Order confirmation banner ──
+    const orderBanner        = document.getElementById("order-banner");
+    const orderBannerMsg     = document.getElementById("order-banner-msg");
+    const orderBannerClose   = document.getElementById("order-banner-close");
+    const bannerProgressFill = document.getElementById("banner-progress-fill");
+    let bannerTimer    = null;
+    let pendingBanner  = null;   // { type, itemName } — shown after modal fully closes
+
+    function showOrderBanner(type, itemName) {
+      if (!orderBanner) return;
+      // message
+      if (type === "food") {
+        orderBanner.className = "food-banner";
+        orderBannerMsg.textContent = "🍽️ Your food order is being prepared — we'll be with you shortly!";
+      } else {
+        const nm = itemName ? `"${itemName}"` : "Your request";
+        orderBanner.className = "service-banner";
+        orderBannerMsg.textContent = `🛎️ ${nm} has been received — our team will be with you soon!`;
+      }
+      // progress bar: reset then animate over 7 s
+      if (bannerProgressFill) {
+        bannerProgressFill.style.transition = "none";
+        bannerProgressFill.style.width = "100%";
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            bannerProgressFill.style.transition = "width 7s linear";
+            bannerProgressFill.style.width = "0%";
+          });
+        });
+      }
+      orderBanner.style.display = "block";
+      // auto-dismiss after 7 s
+      if (bannerTimer) clearTimeout(bannerTimer);
+      bannerTimer = setTimeout(hideBanner, 7000);
+    }
+
+    function hideBanner() {
+      if (orderBanner) orderBanner.style.display = "none";
+      if (bannerTimer) { clearTimeout(bannerTimer); bannerTimer = null; }
+    }
+
+    if (orderBannerClose) orderBannerClose.addEventListener("click", hideBanner);
+
+    // Show pending banner once cart modal finishes closing
+    if (cartModalEl) {
+      cartModalEl.addEventListener("hidden.bs.modal", () => {
+        if (pendingBanner) {
+          showOrderBanner(pendingBanner.type, pendingBanner.itemName);
+          pendingBanner = null;
+        }
+      });
+    }
+
     // Lock/unlock all interactive buttons when phone not verified
     function setLockedUI(locked) {
       const sel = ".btn-add-to-cart, .qty-btn, #btn-submit-order, .btn-request-service, #btn-view-cart, #btn-send-service";
@@ -861,7 +976,7 @@
           });
           const data = await resp.json();
           if (data.ok) {
-            alert("Order placed successfully!");
+            pendingBanner = { type: "food", itemName: null };
             orderNote.value = "";
             if (cartModal) cartModal.hide();
             updateMiniCart("0", "");
@@ -912,7 +1027,7 @@
           });
           const data = await resp.json();
           if (data.ok) {
-            alert("Service request sent!");
+            showOrderBanner("service", serviceItemNameEl.textContent);
             serviceModal.hide();
           } else if (data.error === "already_requested") {
             alert("This service is already requested and in progress.");
@@ -940,32 +1055,43 @@
             myServicesBody.innerHTML = '<div class="text-danger small">Could not load summary.</div>';
             return;
           }
+          const statusBadge = (s) => {
+            const map = { NEW: "bg-warning text-dark", ACCEPTED: "bg-primary", COMPLETED: "bg-success", CANCELLED: "bg-danger" };
+            return `<span class="badge ${map[s] || 'bg-secondary'}">${s}</span>`;
+          };
+
           let html = "";
           if (data.food && data.food.length) {
-            html += '<h6 class="mb-2">Food orders</h6><ul class="list-group mb-3">';
+            html += '<h6 class="mb-2">🍽️ Food orders</h6><div class="d-flex flex-column gap-2 mb-3">';
             data.food.forEach(row => {
+              const linesHtml = (row.lines && row.lines.length)
+                ? row.lines.map(l => `<span class="me-2">• ${l.name} × ${l.qty}</span>`).join("")
+                : '<span class="text-muted">—</span>';
+              const total = row.subtotal ? `₹ ${row.subtotal.toFixed(2)}` : "";
               html += `
-                <li class="list-group-item py-2">
-                  <div class="d-flex justify-content-between align-items-center">
-                    <span class="small">Order #${row.request_id}</span>
-                    <span class="badge bg-secondary">${row.status}</span>
+                <div class="border rounded p-2" style="font-size:0.88rem;">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <strong>Order #${row.request_id}</strong>
+                    ${statusBadge(row.status)}
                   </div>
-                </li>`;
+                  <div class="text-muted mb-1">${linesHtml}</div>
+                  ${total ? `<div class="fw-semibold text-success">${total}</div>` : ""}
+                </div>`;
             });
-            html += "</ul>";
+            html += "</div>";
           }
           if (data.services && data.services.length) {
-            html += '<h6 class="mb-2">Service requests</h6><ul class="list-group mb-1">';
+            html += '<h6 class="mb-2">🛎️ Service requests</h6><div class="d-flex flex-column gap-2 mb-1">';
             data.services.forEach(row => {
               html += `
-                <li class="list-group-item py-2">
+                <div class="border rounded p-2" style="font-size:0.88rem;">
                   <div class="d-flex justify-content-between align-items-center">
-                    <span class="small">${row.name}</span>
-                    <span class="badge bg-secondary">${row.status}</span>
+                    <span>${row.name}</span>
+                    ${statusBadge(row.status)}
                   </div>
-                </li>`;
+                </div>`;
             });
-            html += "</ul>";
+            html += "</div>";
           }
           if (!html) {
             html = '<div class="text-muted small">No recent orders or services.</div>';

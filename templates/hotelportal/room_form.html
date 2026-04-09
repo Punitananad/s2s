@@ -1,29 +1,96 @@
-{% extends "base.html" %}
+{% extends "base_portal.html" %}
 {% block title %}{{ mode|capfirst }} Room — Scan2Service{% endblock %}
+
+{% block topbar_breadcrumb %}
+<a href="{% url 'portal_home' %}" class="hover:text-indigo-600">Portal</a>
+<span class="text-gray-300">/</span>
+<a href="{% url 'rooms_list' %}" class="hover:text-indigo-600">Rooms</a>
+<span class="text-gray-300">/</span>
+<span class="font-medium text-gray-700">{{ mode|capfirst }}</span>
+{% endblock %}
+
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-md-6">
-    <div class="card shadow-sm">
-      <div class="card-body">
-        <h4 class="mb-3">{{ mode|capfirst }} Room</h4>
-        <form method="post">
-          {% csrf_token %}
-          <div class="mb-3">
-            <label class="form-label">Room number</label>
-            {{ form.number }}
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Floor</label>
-            {{ form.floor }}
-          </div>
-          <div class="form-check mb-3">
-            {{ form.is_active }} <label class="form-check-label ms-1">Active</label>
-          </div>
-          <button class="btn btn-success">Save</button>
-          <a href="{% url 'rooms_list' %}" class="btn btn-link">Cancel</a>
-        </form>
-      </div>
-    </div>
+
+<!-- Page Header -->
+<div class="ds-page-header">
+  <div>
+    <h1 class="ds-page-title">{{ mode|capfirst }} Room</h1>
+    <p class="ds-page-subtitle">
+      {% if mode == "edit" %}Update room details below.
+      {% else %}Add a new room to {{ request.user.hotel.name }}.{% endif %}
+    </p>
   </div>
 </div>
+
+<!-- Max-width wrapper — form cards shouldn't stretch full width -->
+<div style="max-width:40rem;">
+
+  <div class="ds-card">
+    <div class="ds-card-header">
+      <div class="ds-card-title">Room Details</div>
+    </div>
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="ds-card-body">
+
+        {% if form.non_field_errors %}
+          <div class="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            {{ form.non_field_errors }}
+          </div>
+        {% endif %}
+
+        <div class="ds-form-grid ds-form-grid-2">
+
+          <div class="ds-form-field">
+            <label class="ds-form-label" for="{{ form.number.id_for_label }}">
+              Room Number <span style="color:var(--ds-danger)">*</span>
+            </label>
+            {{ form.number }}
+            {% if form.number.errors %}
+              {% for e in form.number.errors %}
+                <p class="ds-form-error">{{ e }}</p>
+              {% endfor %}
+            {% endif %}
+            <p class="ds-form-help">Unique identifier shown on the QR code</p>
+          </div>
+
+          <div class="ds-form-field">
+            <label class="ds-form-label" for="{{ form.floor.id_for_label }}">Floor</label>
+            {{ form.floor }}
+            {% if form.floor.errors %}
+              {% for e in form.floor.errors %}
+                <p class="ds-form-error">{{ e }}</p>
+              {% endfor %}
+            {% endif %}
+            <p class="ds-form-help">e.g. 1, 2, Ground, Basement</p>
+          </div>
+
+          <div class="ds-form-col-span-2">
+            <div class="ds-form-check">
+              {{ form.is_active }}
+              <label class="ds-form-check-label" for="{{ form.is_active.id_for_label }}">
+                Room is active
+              </label>
+            </div>
+            <p class="ds-form-help" style="margin-top:0;padding-left:1.5rem;">
+              Inactive rooms are hidden from guests
+            </p>
+          </div>
+
+        </div>
+
+        <div class="ds-form-actions">
+          <a href="{% url 'rooms_list' %}" class="ds-btn ds-btn-ghost">Cancel</a>
+          <button type="submit" class="ds-btn ds-btn-primary">
+            <i class="fa-solid fa-check"></i>
+            {% if mode == "edit" %}Save Changes{% else %}Create Room{% endif %}
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+</div>
+
 {% endblock %}

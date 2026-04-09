@@ -1,0 +1,74 @@
+{% load static %}
+<footer class="footer bg-theme-light/50">
+  <div class="container">
+    <div class="row gx-5 pb-10 pt-[52px]">
+
+      <!-- Brand column -->
+      <div class="col-12 mt-12 md:col-6 lg:col-4">
+        <a href="{% url 'home' %}">
+          <span style="font-size:1.3rem;font-weight:700;color:#4f46e5;">Scan2Service</span>
+        </a>
+        <p class="mt-6">
+          The smartest way to manage hotel room service. Guests scan, staff act,
+          everyone gets a better experience.
+        </p>
+        <ul class="social-icons mt-4 lg:mt-6">
+          <li>
+            <a href="#" title="Twitter / X">
+              <i class="fa-brands fa-x-twitter"></i>
+            </a>
+          </li>
+          <li>
+            <a href="#" title="LinkedIn">
+              <i class="fa-brands fa-linkedin-in"></i>
+            </a>
+          </li>
+          <li>
+            <a href="#" title="Instagram">
+              <i class="fa-brands fa-instagram"></i>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Product links -->
+      <div class="col-12 mt-12 md:col-6 lg:col-2">
+        <h6>Product</h6>
+        <ul>
+          <li><a href="{% url 'home' %}">Home</a></li>
+          <li><a href="{% url 'pricing' %}">Pricing</a></li>
+          <li><a href="{% url 'about' %}">About</a></li>
+          <li><a href="{% url 'contact' %}">Contact</a></li>
+        </ul>
+      </div>
+
+      <!-- Account links -->
+      <div class="col-12 mt-12 md:col-6 lg:col-3">
+        <h6>Account</h6>
+        <ul>
+          {% if user.is_authenticated %}
+            <li><a href="{% url 'portal_home' %}">Dashboard</a></li>
+            <li><a href="{% url 'logout' %}">Sign Out</a></li>
+          {% else %}
+            <li><a href="{% url 'login' %}">Sign In</a></li>
+            <li><a href="{% url 'signup' %}">Create Account</a></li>
+          {% endif %}
+        </ul>
+      </div>
+
+      <!-- Contact info -->
+      <div class="col-12 mt-12 md:col-6 lg:col-3">
+        <h6>Contact</h6>
+        <p>support@scan2service.in</p>
+        <p class="mt-2">Available Mon–Sat, 9am–6pm IST</p>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="container max-w-[1440px]">
+    <div class="footer-copyright mx-auto border-t border-border pb-10 pt-7 text-center">
+      <p>&copy; {% now "Y" %} Scan2Service. All rights reserved.</p>
+    </div>
+  </div>
+</footer>

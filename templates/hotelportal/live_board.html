@@ -1,173 +1,540 @@
-{% extends "base.html" %}
+{% extends "base_portal.html" %}
 {% load static %}
 
 {% block title %}Live Board{% endblock %}
 
+{% block topbar_breadcrumb %}
+<a href="{% url 'portal_home' %}" class="hover:text-indigo-600">Portal</a>
+<span class="text-gray-300">/</span>
+<span class="font-medium text-gray-700">Live Board</span>
+{% endblock %}
+
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/live-board-modern.css' %}">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 {% endblock %}
 
 {% block content %}
-<div class="live-header">
-  <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+
+<!-- ── Page header ─────────────────────────────────────────── -->
+<div class="lb-page-header">
+  <div class="lb-title">
+    <i class="fa-solid fa-bolt text-indigo-500"></i>
+    Live Board
+    <span class="lb-live-dot"><span class="dot"></span>LIVE</span>
+  </div>
+  <div class="lb-header-actions">
+    <span class="text-xs text-gray-400 hidden sm:inline">Auto-refresh 8s + WebSocket</span>
+    <a class="lb-btn outline" href="{% url 'portal_requests_history' %}">
+      <i class="fa-solid fa-clock-rotate-left"></i> History
+    </a>
+  </div>
+</div>
+
+<!-- ── Stats row ───────────────────────────────────────────── -->
+<div class="lb-stats-row">
+  <div class="lb-stat-card">
+    <div class="lb-stat-icon green"><i class="fa-solid fa-door-open"></i></div>
     <div>
-      <h1 class="live-title"><i class="fas fa-bolt"></i> Live Board</h1>
-      <div class="text-muted small mt-1">
-        <i class="fas fa-sync-alt"></i> Auto-refreshing every 8s + Real-time WebSocket updates
-      </div>
+      <div class="lb-stat-label">Free Rooms</div>
+      <div class="lb-stat-value" id="statFree">—</div>
     </div>
-    <div class="d-flex gap-2 align-items-center flex-wrap">
-      <div class="stats-badges">
-        <div class="stat-badge success">
-          <i class="fas fa-check-circle"></i>
-          <span>Completed Today: <strong id="countCompleted">{{ completed_today }}</strong></span>
-        </div>
-        <div class="stat-badge secondary">
-          <i class="fas fa-times-circle"></i>
-          <span>Cancelled Today: <strong id="countCancelled">{{ cancelled_today }}</strong></span>
-        </div>
-      </div>
-      <a class="btn btn-modern outline" href="{% url 'portal_requests_history' %}">
-        <i class="fas fa-history"></i> View History
-      </a>
+  </div>
+  <div class="lb-stat-card">
+    <div class="lb-stat-icon amber"><i class="fa-solid fa-bed"></i></div>
+    <div>
+      <div class="lb-stat-label">Busy Rooms</div>
+      <div class="lb-stat-value" id="statBusy">—</div>
+    </div>
+  </div>
+  <div class="lb-stat-card">
+    <div class="lb-stat-icon blue"><i class="fa-solid fa-bell"></i></div>
+    <div>
+      <div class="lb-stat-label">Pending Requests</div>
+      <div class="lb-stat-value" id="statPending">—</div>
+    </div>
+  </div>
+  <div class="lb-stat-card">
+    <div class="lb-stat-icon red"><i class="fa-solid fa-check-circle"></i></div>
+    <div>
+      <div class="lb-stat-label">Completed Today</div>
+      <div class="lb-stat-value" id="countCompleted">{{ completed_today }}</div>
+    </div>
+  </div>
+  <div class="lb-stat-card">
+    <div class="lb-stat-icon green" style="background:#f0fdf4;color:#166534;"><i class="fa-solid fa-xmark-circle"></i></div>
+    <div>
+      <div class="lb-stat-label">Cancelled Today</div>
+      <div class="lb-stat-value" id="countCancelled">{{ cancelled_today }}</div>
     </div>
   </div>
 </div>
 
-<div class="row g-3">
+<!-- ── 3-column board ──────────────────────────────────────── -->
+<div class="lb-board">
+
   <!-- ROOMS COLUMN -->
-  <div class="col-12 col-lg-4">
-    <!-- FREE -->
-    <div class="section-card mb-3">
-      <div class="section-header free">
-        <i class="fas fa-door-open"></i>
-        <span>Free Rooms</span>
-      </div>
-      <div class="section-body" id="laneFree">
-        <div class="empty-state loading">
-          <i class="fas fa-spinner fa-spin"></i>
-          <p>Loading rooms...</p>
+  <div class="lb-col lb-rooms-col">
+
+    <!-- Header: title + counts -->
+    <div style="padding:12px 14px 0; border-bottom:1px solid #e2e8f0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;color:#1e293b;">
+          <div style="width:28px;height:28px;border-radius:8px;background:#e0e7ff;color:#4338ca;display:flex;align-items:center;justify-content:center;">
+            <i class="fa-solid fa-building" style="font-size:12px;"></i>
+          </div>
+          Rooms
         </div>
+        <div style="display:flex;gap:6px;">
+          <span style="background:#dcfce7;color:#166534;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;">
+            <i class="fa-solid fa-door-open" style="font-size:10px;"></i> <span id="cntFree">0</span> Free
+          </span>
+          <span style="background:#fef9c3;color:#a16207;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;">
+            <i class="fa-solid fa-bed" style="font-size:10px;"></i> <span id="cntBusy">0</span> Busy
+          </span>
+          <span style="background:#eff6ff;color:#1d4ed8;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;">
+            <i class="fa-solid fa-broom" style="font-size:10px;"></i> <span id="cntClean">0</span>
+          </span>
+        </div>
+      </div>
+      <!-- Tabs -->
+      <div style="display:flex;gap:0;border-radius:10px;overflow:hidden;border:1.5px solid #e2e8f0;margin-bottom:12px;">
+        <button id="tab-free"     onclick="switchRoomTab('free')"
+          style="flex:1;padding:7px 4px;border:none;background:#6366f1;color:#fff;font-size:11px;font-weight:700;cursor:pointer;transition:background .15s;">
+          🚪 Free
+        </button>
+        <button id="tab-busy"     onclick="switchRoomTab('busy')"
+          style="flex:1;padding:7px 4px;border:none;border-left:1.5px solid #e2e8f0;background:#f8fafc;color:#64748b;font-size:11px;font-weight:700;cursor:pointer;transition:background .15s;">
+          🛏️ Busy
+        </button>
+        <button id="tab-cleaning" onclick="switchRoomTab('cleaning')"
+          style="flex:1;padding:7px 4px;border:none;border-left:1.5px solid #e2e8f0;background:#f8fafc;color:#64748b;font-size:11px;font-weight:700;cursor:pointer;transition:background .15s;">
+          🧹 Cleaning
+        </button>
       </div>
     </div>
-    <!-- BUSY -->
-    <div class="section-card mb-3">
-      <div class="section-header busy">
-        <i class="fas fa-bed"></i>
-        <span>Busy Rooms</span>
+
+    <div class="lb-col-body" style="padding:10px;">
+      <div id="laneFree">
+        <div class="lb-empty lb-loading"><div class="lb-empty-icon"><i class="fa-solid fa-spinner fa-spin"></i></div><p>Loading…</p></div>
       </div>
-      <div class="section-body" id="laneBusy">
-        <div class="empty-state loading">
-          <i class="fas fa-spinner fa-spin"></i>
-          <p>Loading rooms...</p>
-        </div>
+      <div id="laneBusy" style="display:none;">
+        <div class="lb-empty lb-loading"><div class="lb-empty-icon"><i class="fa-solid fa-spinner fa-spin"></i></div><p>Loading…</p></div>
       </div>
-    </div>
-    <!-- CLEANING -->
-    <div class="section-card mb-3">
-      <div class="section-header cleaning">
-        <i class="fas fa-broom"></i>
-        <span>Cleaning</span>
-      </div>
-      <div class="section-body" id="laneCleaning">
-        <div class="empty-state loading">
-          <i class="fas fa-spinner fa-spin"></i>
-          <p>Loading rooms...</p>
-        </div>
+      <div id="laneCleaning" style="display:none;">
+        <div class="lb-empty lb-loading"><div class="lb-empty-icon"><i class="fa-solid fa-spinner fa-spin"></i></div><p>Loading…</p></div>
       </div>
     </div>
   </div>
 
-  <!-- REQUESTS COLUMN -->
-  <div class="col-12 col-lg-8">
-    <div class="row g-3">
-      <div class="col-12 col-md-6">
-        <div class="section-card h-100">
-          <div class="section-header new">
-            <i class="fas fa-bell"></i>
-            <span>NEW Requests</span>
-          </div>
-          <div class="section-body" id="laneNew">
-            <div class="empty-state loading">
-              <i class="fas fa-spinner fa-spin"></i>
-              <p>Loading requests...</p>
-            </div>
-          </div>
-        </div>
+  <!-- NEW REQUESTS COLUMN -->
+  <div class="lb-col">
+    <div class="lb-col-header new-hdr">
+      <div class="title-group">
+        <div class="col-icon"><i class="fa-solid fa-bell"></i></div>
+        NEW Requests
       </div>
-      <div class="col-12 col-md-6">
-        <div class="section-card h-100">
-          <div class="section-header accepted">
-            <i class="fas fa-clock"></i>
-            <span>ACCEPTED Requests</span>
-          </div>
-          <div class="section-body" id="laneAccepted">
-            <div class="empty-state loading">
-              <i class="fas fa-spinner fa-spin"></i>
-              <p>Loading requests...</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <span class="lb-count-badge" id="cntNew">0</span>
+    </div>
+    <div class="lb-col-body" id="laneNew">
+      <div class="lb-empty lb-loading"><div class="lb-empty-icon"><i class="fa-solid fa-spinner fa-spin"></i></div><p>Loading…</p></div>
     </div>
   </div>
+
+  <!-- ACCEPTED REQUESTS COLUMN -->
+  <div class="lb-col">
+    <div class="lb-col-header accepted-hdr">
+      <div class="title-group">
+        <div class="col-icon"><i class="fa-solid fa-clock"></i></div>
+        ACCEPTED
+      </div>
+      <span class="lb-count-badge" id="cntAccepted">0</span>
+    </div>
+    <div class="lb-col-body" id="laneAccepted">
+      <div class="lb-empty lb-loading"><div class="lb-empty-icon"><i class="fa-solid fa-spinner fa-spin"></i></div><p>Loading…</p></div>
+    </div>
+  </div>
+
 </div>
 
-<!-- Request Detail Modal (existing) -->
+<!-- ── Modals (Bootstrap 5) ─────────────────────────────────── -->
 <div class="modal fade" id="reqDetailModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Request details</h5>
+      <div class="modal-header border-0 pb-0">
+        <h6 class="modal-title fw-bold">Request details</h6>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body" id="reqDetailBody">
-        <div class="text-muted">Loading…</div>
+        <div class="text-muted small">Loading…</div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Check-in Modal for FREE rooms -->
+<!-- ── Check-in Modal ─────────────────────────────────────── -->
 <div class="modal fade" id="checkinModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-sm">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Check-in</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content" style="border-radius:16px;border:none;">
+
+      <!-- Header -->
+      <div class="modal-header border-0" style="background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:16px 16px 0 0;padding:18px 24px;">
+        <div class="d-flex align-items-center gap-3 w-100">
+          <div style="width:38px;height:38px;background:rgba(255,255,255,0.2);border-radius:10px;display:flex;align-items:center;justify-content:center;">
+            <i class="fa-solid fa-right-to-bracket text-white"></i>
+          </div>
+          <div>
+            <h6 class="modal-title fw-bold text-white mb-0">Guest Check-in</h6>
+            <p class="text-white mb-0" style="font-size:11px;opacity:0.8;" id="ciRoomLabel">Room —</p>
+          </div>
+          <!-- Quick / Full toggle -->
+          <div class="ms-auto d-flex gap-1" style="background:rgba(255,255,255,0.15);border-radius:8px;padding:3px;">
+            <button type="button" id="ciModeQuick" class="ci-mode-btn active" onclick="setCiMode('quick')">
+              <i class="fa-solid fa-bolt fa-xs"></i> Quick
+            </button>
+            <button type="button" id="ciModeFull" class="ci-mode-btn" onclick="setCiMode('full')">
+              <i class="fa-solid fa-clipboard-list fa-xs"></i> Full
+            </button>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white ms-3" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body">
+
+      <div class="modal-body" style="padding:24px;">
         <input type="hidden" id="ciRoomId">
-        <div class="mb-2">
-          <label class="form-label small">Guest name</label>
-          <input id="ciGuest" class="form-control form-control-sm" />
+
+        <!-- Returning guest banner (shown after auto-fill) -->
+        <div id="ciReturningBanner" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 14px;margin-bottom:16px;" class="d-flex align-items-center gap-2">
+          <i class="fa-solid fa-circle-check text-green-600"></i>
+          <span style="font-size:13px;color:#15803d;">Returning guest — details auto-filled. Update if needed.</span>
         </div>
-        <div>
-          <label class="form-label small">Phone</label>
-          <input id="ciPhone" class="form-control form-control-sm" inputmode="numeric" />
+
+        <!-- Error -->
+        <div class="text-danger small mb-3" id="ciErr" style="display:none;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 12px;"></div>
+
+        <!-- ── Required fields ── -->
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-md-6">
+            <label class="ci-label">Guest Name <span class="text-danger">*</span></label>
+            <input id="ciGuest" class="ci-input" placeholder="Full name" autocomplete="off" />
+          </div>
+          <div class="col-12 col-md-6">
+            <label class="ci-label">Mobile Number <span class="text-danger">*</span></label>
+            <div class="d-flex gap-2">
+              <input id="ciPhone" class="ci-input" inputmode="numeric" maxlength="10" placeholder="10-digit mobile" autocomplete="off" />
+              <button type="button" id="ciLookupBtn" class="ci-lookup-btn" title="Look up returning guest">
+                <i class="fa-solid fa-magnifying-glass"></i>
+              </button>
+            </div>
+          </div>
         </div>
-        <div class="invalid-feedback d-block small" id="ciErr" style="display:none;"></div>
-      </div>
-      <div class="modal-footer">
-        <button id="ciSubmit" class="btn btn-primary btn-sm">Check in</button>
+
+        <!-- ── More Details (collapsible) ── -->
+        <div id="ciMoreSection">
+          <button type="button" id="ciToggleMore" class="ci-toggle-btn" onclick="toggleCiMore()">
+            <i class="fa-solid fa-plus fa-xs" id="ciToggleIcon"></i>
+            <span id="ciToggleLabel">Add More Details</span>
+          </button>
+
+          <div id="ciMoreBody" style="display:none;margin-top:16px;">
+
+            <!-- Identity -->
+            <p class="ci-section-title"><i class="fa-solid fa-id-card fa-xs me-1"></i>Identity Details</p>
+            <div class="row g-3 mb-3">
+              <div class="col-12 col-md-4">
+                <label class="ci-label">ID Type</label>
+                <select id="ciIdType" class="ci-input">
+                  <option value="">Select…</option>
+                  <option value="AADHAAR">Aadhaar</option>
+                  <option value="PASSPORT">Passport</option>
+                  <option value="DL">Driving License</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="ci-label">ID Number</label>
+                <input id="ciIdNumber" class="ci-input" placeholder="ID number" />
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="ci-label">Aadhaar Number</label>
+                <input id="ciAadhaar" class="ci-input" inputmode="numeric" maxlength="12" placeholder="12-digit Aadhaar" />
+                <p class="ci-hint" id="ciAadhaarHint" style="display:none;color:#ef4444;">Must be 12 digits</p>
+              </div>
+            </div>
+
+            <!-- Personal -->
+            <p class="ci-section-title"><i class="fa-solid fa-user fa-xs me-1"></i>Personal Details</p>
+            <div class="row g-3 mb-3">
+              <div class="col-6 col-md-3">
+                <label class="ci-label">Age</label>
+                <input id="ciAge" class="ci-input" type="number" min="1" max="120" placeholder="Age" />
+              </div>
+              <div class="col-6 col-md-3">
+                <label class="ci-label">Gender</label>
+                <select id="ciGender" class="ci-input">
+                  <option value="">Select…</option>
+                  <option value="M">Male</option>
+                  <option value="F">Female</option>
+                  <option value="O">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Address -->
+            <p class="ci-section-title"><i class="fa-solid fa-location-dot fa-xs me-1"></i>Address</p>
+            <div class="row g-3 mb-3">
+              <div class="col-12 col-md-4">
+                <label class="ci-label">City</label>
+                <input id="ciCity" class="ci-input" placeholder="City" />
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="ci-label">State</label>
+                <input id="ciState" class="ci-input" placeholder="State" />
+              </div>
+              <div class="col-12">
+                <label class="ci-label">Full Address</label>
+                <textarea id="ciAddress" class="ci-input" rows="2" placeholder="Street, locality…"></textarea>
+              </div>
+            </div>
+
+            <!-- ID Proof upload -->
+            <p class="ci-section-title"><i class="fa-solid fa-file-image fa-xs me-1"></i>ID Proof Upload</p>
+            <div class="mb-3">
+              <label class="ci-upload-area" for="ciIdProof">
+                <i class="fa-solid fa-cloud-arrow-up text-indigo-400 fa-lg mb-1"></i>
+                <span id="ciIdProofName" style="font-size:12px;color:#6b7280;">Click to upload image or PDF</span>
+                <input type="file" id="ciIdProof" accept="image/*,.pdf" style="display:none;" onchange="onIdProofChange(this)" />
+              </label>
+            </div>
+
+            <!-- Signature pad -->
+            <p class="ci-section-title"><i class="fa-solid fa-signature fa-xs me-1"></i>E-Signature</p>
+            <div class="mb-2" style="border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#fafafa;">
+              <canvas id="ciSigCanvas" width="600" height="140" style="width:100%;height:140px;touch-action:none;cursor:crosshair;display:block;"></canvas>
+            </div>
+            <div class="d-flex gap-2 mb-1">
+              <button type="button" class="ci-clear-btn" onclick="clearSignature()">
+                <i class="fa-solid fa-eraser fa-xs"></i> Clear signature
+              </button>
+            </div>
+
+          </div><!-- /ciMoreBody -->
+        </div><!-- /ciMoreSection -->
+      </div><!-- /modal-body -->
+
+      <div class="modal-footer border-0" style="padding:16px 24px 20px;">
+        <button id="ciSubmit" class="lb-btn primary w-100" style="padding:12px;font-size:15px;">
+          <i class="fa-solid fa-right-to-bracket"></i> Check In
+        </button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Audio for new requests -->
+<style>
+.ci-label { display:block; font-size:12px; font-weight:600; color:#374151; margin-bottom:4px; }
+.ci-input { width:100%; padding:8px 11px; font-size:13px; border:1px solid #e2e8f0; border-radius:8px; outline:none; background:#fff; transition:border-color .15s; }
+.ci-input:focus { border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.1); }
+.ci-section-title { font-size:11px; font-weight:700; color:#6366f1; text-transform:uppercase; letter-spacing:.05em; margin:0 0 10px; }
+.ci-hint { font-size:11px; margin-top:3px; }
+.ci-toggle-btn { width:100%; padding:9px 14px; background:#f1f5f9; border:1px dashed #cbd5e1; border-radius:8px; font-size:13px; font-weight:600; color:#475569; cursor:pointer; display:flex; align-items:center; gap:6px; transition:background .15s; }
+.ci-toggle-btn:hover { background:#e2e8f0; }
+.ci-upload-area { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:18px; border:2px dashed #c7d2fe; border-radius:10px; cursor:pointer; background:#f5f3ff; gap:4px; transition:border-color .15s; }
+.ci-upload-area:hover { border-color:#6366f1; }
+.ci-clear-btn { padding:5px 12px; font-size:12px; border:1px solid #e2e8f0; border-radius:6px; background:#fff; cursor:pointer; color:#64748b; }
+.ci-lookup-btn { padding:0 12px; border:1px solid #e2e8f0; border-radius:8px; background:#f8fafc; cursor:pointer; color:#6366f1; flex-shrink:0; font-size:14px; }
+.ci-lookup-btn:hover { background:#eef2ff; }
+.ci-mode-btn { padding:5px 12px; font-size:12px; font-weight:600; border:none; border-radius:6px; background:transparent; color:rgba(255,255,255,0.7); cursor:pointer; transition:all .15s; }
+.ci-mode-btn.active { background:rgba(255,255,255,0.25); color:#fff; }
+</style>
+
+<script>
+(function(){
+  /* ── Signature pad ── */
+  let sigCanvas, sigCtx, sigDrawing = false, sigHasData = false;
+
+  function initSigPad(){
+    sigCanvas = document.getElementById('ciSigCanvas');
+    if(!sigCanvas) return;
+    sigCtx = sigCanvas.getContext('2d');
+    sigCtx.strokeStyle = '#1e293b';
+    sigCtx.lineWidth = 2;
+    sigCtx.lineCap = 'round';
+
+    function pos(e){
+      const r = sigCanvas.getBoundingClientRect();
+      const src = e.touches ? e.touches[0] : e;
+      return { x:(src.clientX-r.left)*(sigCanvas.width/r.width), y:(src.clientY-r.top)*(sigCanvas.height/r.height) };
+    }
+    sigCanvas.addEventListener('mousedown',  e=>{ sigDrawing=true; const p=pos(e); sigCtx.beginPath(); sigCtx.moveTo(p.x,p.y); });
+    sigCanvas.addEventListener('mousemove',  e=>{ if(!sigDrawing) return; const p=pos(e); sigCtx.lineTo(p.x,p.y); sigCtx.stroke(); sigHasData=true; });
+    sigCanvas.addEventListener('mouseup',    ()=>sigDrawing=false);
+    sigCanvas.addEventListener('mouseleave', ()=>sigDrawing=false);
+    sigCanvas.addEventListener('touchstart', e=>{ e.preventDefault(); sigDrawing=true; const p=pos(e); sigCtx.beginPath(); sigCtx.moveTo(p.x,p.y); },{passive:false});
+    sigCanvas.addEventListener('touchmove',  e=>{ e.preventDefault(); if(!sigDrawing) return; const p=pos(e); sigCtx.lineTo(p.x,p.y); sigCtx.stroke(); sigHasData=true; },{passive:false});
+    sigCanvas.addEventListener('touchend',   ()=>sigDrawing=false);
+  }
+
+  window.clearSignature = function(){
+    if(sigCtx) sigCtx.clearRect(0,0,sigCanvas.width,sigCanvas.height);
+    sigHasData=false;
+  };
+
+  /* ── Mode toggle (Quick / Full) ── */
+  window.setCiMode = function(mode){
+    document.getElementById('ciModeQuick').classList.toggle('active', mode==='quick');
+    document.getElementById('ciModeFull').classList.toggle('active', mode==='full');
+    if(mode==='full'){
+      document.getElementById('ciMoreBody').style.display='block';
+      document.getElementById('ciToggleLabel').textContent='Hide Details';
+      document.getElementById('ciToggleIcon').className='fa-solid fa-minus fa-xs';
+    } else {
+      document.getElementById('ciMoreBody').style.display='none';
+      document.getElementById('ciToggleLabel').textContent='Add More Details';
+      document.getElementById('ciToggleIcon').className='fa-solid fa-plus fa-xs';
+    }
+  };
+
+  /* ── More toggle ── */
+  window.toggleCiMore = function(){
+    const body = document.getElementById('ciMoreBody');
+    const open = body.style.display === 'block';
+    body.style.display = open ? 'none' : 'block';
+    document.getElementById('ciToggleLabel').textContent = open ? 'Add More Details' : 'Hide Details';
+    document.getElementById('ciToggleIcon').className = open ? 'fa-solid fa-plus fa-xs' : 'fa-solid fa-minus fa-xs';
+    document.getElementById('ciModeQuick').classList.toggle('active', open);
+    document.getElementById('ciModeFull').classList.toggle('active', !open);
+  };
+
+  /* ── File upload label ── */
+  window.onIdProofChange = function(input){
+    const label = document.getElementById('ciIdProofName');
+    label.textContent = input.files.length ? input.files[0].name : 'Click to upload image or PDF';
+  };
+
+  /* ── Aadhaar validation ── */
+  document.addEventListener('DOMContentLoaded', function(){
+    const aadhaarInput = document.getElementById('ciAadhaar');
+    if(aadhaarInput){
+      aadhaarInput.addEventListener('input', function(){
+        const hint = document.getElementById('ciAadhaarHint');
+        const v = this.value.trim();
+        hint.style.display = (v && v.length !== 12) ? 'block' : 'none';
+      });
+    }
+    initSigPad();
+  });
+
+  /* ── Guest lookup (auto-fill on phone) ── */
+  document.getElementById('ciLookupBtn').addEventListener('click', async function(){
+    const phone = document.getElementById('ciPhone').value.trim();
+    if(phone.length !== 10){ alert('Enter a 10-digit number first.'); return; }
+    this.innerHTML = '<i class="fa-solid fa-spinner fa-spin fa-xs"></i>';
+    try{
+      const res = await fetch("{% url 'portal_guest_lookup' %}?phone="+encodeURIComponent(phone), {credentials:'same-origin'});
+      const data = await res.json();
+      if(data.ok){
+        document.getElementById('ciGuest').value       = data.guest_name || '';
+        document.getElementById('ciIdType').value      = data.id_type    || '';
+        document.getElementById('ciIdNumber').value    = data.id_number  || '';
+        document.getElementById('ciAadhaar').value     = data.aadhaar_number || '';
+        document.getElementById('ciAge').value         = data.age        || '';
+        document.getElementById('ciGender').value      = data.gender     || '';
+        document.getElementById('ciCity').value        = data.city       || '';
+        document.getElementById('ciState').value       = data.state      || '';
+        document.getElementById('ciAddress').value     = data.address    || '';
+        document.getElementById('ciReturningBanner').style.display='flex';
+        // Expand more details so staff can review
+        document.getElementById('ciMoreBody').style.display='block';
+        document.getElementById('ciToggleLabel').textContent='Hide Details';
+        document.getElementById('ciToggleIcon').className='fa-solid fa-minus fa-xs';
+      } else {
+        document.getElementById('ciReturningBanner').style.display='none';
+        alert('No previous record found for this number.');
+      }
+    }catch(e){ alert('Lookup failed.'); }
+    this.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i>';
+  });
+
+  /* ── Submit ── */
+  document.getElementById('ciSubmit').addEventListener('click', async function(){
+    const errEl   = document.getElementById('ciErr');
+    const roomId  = document.getElementById('ciRoomId').value;
+    const guest   = document.getElementById('ciGuest').value.trim();
+    const phone   = document.getElementById('ciPhone').value.trim();
+    errEl.style.display = 'none';
+
+    if(!guest){ errEl.textContent='Guest name is required.'; errEl.style.display='block'; return; }
+    if(!/^\d{10}$/.test(phone)){ errEl.textContent='Enter a valid 10-digit mobile number.'; errEl.style.display='block'; return; }
+
+    const aadhaar = document.getElementById('ciAadhaar').value.trim();
+    if(aadhaar && aadhaar.length !== 12){ errEl.textContent='Aadhaar must be 12 digits.'; errEl.style.display='block'; return; }
+
+    const fd = new FormData();
+    fd.append('room_id',       roomId);
+    fd.append('guest_name',    guest);
+    fd.append('phone',         phone);
+    fd.append('id_type',       document.getElementById('ciIdType').value);
+    fd.append('id_number',     document.getElementById('ciIdNumber').value.trim());
+    fd.append('aadhaar_number',aadhaar);
+    fd.append('age',           document.getElementById('ciAge').value);
+    fd.append('gender',        document.getElementById('ciGender').value);
+    fd.append('city',          document.getElementById('ciCity').value.trim());
+    fd.append('state',         document.getElementById('ciState').value.trim());
+    fd.append('address',       document.getElementById('ciAddress').value.trim());
+
+    if(sigHasData) fd.append('signature_data', sigCanvas.toDataURL('image/png'));
+
+    const fileInput = document.getElementById('ciIdProof');
+    if(fileInput.files.length) fd.append('id_proof', fileInput.files[0]);
+
+    fd.append('csrfmiddlewaretoken', (document.cookie.match(/(^| )csrftoken=([^;]+)/)||[])[2]||'');
+
+    this.disabled = true;
+    this.innerHTML = '<i class="fa-solid fa-spinner fa-spin fa-xs"></i> Checking in…';
+    try{
+      const res  = await fetch("{% url 'portal_stay_checkin' %}", {method:'POST', body:fd, credentials:'same-origin'});
+      const data = await res.json().catch(()=>({ok:false}));
+      if(data.ok){
+        bootstrap.Modal.getInstance(document.getElementById('checkinModal')).hide();
+      } else {
+        errEl.textContent = data.error || 'Check-in failed.';
+        errEl.style.display = 'block';
+      }
+    }catch(e){
+      errEl.textContent = 'Network error. Please try again.';
+      errEl.style.display = 'block';
+    }
+    this.disabled = false;
+    this.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Check In';
+  });
+
+  /* ── Reset modal on close ── */
+  document.getElementById('checkinModal').addEventListener('hidden.bs.modal', function(){
+    ['ciGuest','ciPhone','ciIdNumber','ciAadhaar','ciAge','ciCity','ciState','ciAddress'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.value='';
+    });
+    ['ciIdType','ciGender'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    document.getElementById('ciIdProofName').textContent='Click to upload image or PDF';
+    document.getElementById('ciIdProof').value='';
+    document.getElementById('ciReturningBanner').style.display='none';
+    document.getElementById('ciErr').style.display='none';
+    setCiMode('quick');
+    clearSignature();
+  });
+})();
+</script>
+
+<!-- Audio -->
 <audio id="sndNew" preload="auto">
   <source src="{% static 'audio/notify.mp3' %}" type="audio/mpeg">
 </audio>
 
-<!-- embed initial JSON -->
-<script id="init-new" type="application/json">{{ new_initial_json|safe }}</script>
-<script id="init-acc" type="application/json">{{ accepted_initial_json|safe }}</script>
-<script id="init-free" type="application/json">{{ free_rooms_json|safe }}</script>
-<script id="init-busy" type="application/json">{{ busy_rooms_json|safe }}</script>
-<script id="init-clean" type="application/json">{{ cleaning_rooms_json|safe }}</script>
-<!-- 13.1B — WhatsApp templates -->
+<!-- Embedded JSON -->
+<script id="init-new"          type="application/json">{{ new_initial_json|safe }}</script>
+<script id="init-acc"          type="application/json">{{ accepted_initial_json|safe }}</script>
+<script id="init-free"         type="application/json">{{ free_rooms_json|safe }}</script>
+<script id="init-busy"         type="application/json">{{ busy_rooms_json|safe }}</script>
+<script id="init-clean"        type="application/json">{{ cleaning_rooms_json|safe }}</script>
 <script id="init-wa-templates" type="application/json">{{ wa_templates_json|safe }}</script>
 
 <script>
@@ -177,490 +544,414 @@
     try { return JSON.parse(el.textContent || "[]"); } catch(e){ return []; }
   }
 
-  const laneNew = document.getElementById('laneNew');
+  const laneNew      = document.getElementById('laneNew');
   const laneAccepted = document.getElementById('laneAccepted');
-  const laneFree = document.getElementById('laneFree');
-  const laneBusy = document.getElementById('laneBusy');
+  const laneFree     = document.getElementById('laneFree');
+  const laneBusy     = document.getElementById('laneBusy');
   const laneCleaning = document.getElementById('laneCleaning');
+
   const countCompleted = document.getElementById('countCompleted');
   const countCancelled = document.getElementById('countCancelled');
-  const snd = document.getElementById('sndNew');
 
+  const cntNew      = document.getElementById('cntNew');
+  const cntAccepted = document.getElementById('cntAccepted');
+  const cntFree     = document.getElementById('cntFree');
+  const cntBusy     = document.getElementById('cntBusy');
+  const cntClean    = document.getElementById('cntClean');
+  const statFree    = document.getElementById('statFree');
+  const statBusy    = document.getElementById('statBusy');
+  const statPending = document.getElementById('statPending');
+
+  const snd = document.getElementById('sndNew');
   let seenNew = new Set();
 
-  // 13.1B — WhatsApp templates (shared for all cards)
   const waTemplates = readInit('init-wa-templates');
 
-  // --- render helpers ---
+  // ── Formatters ──
   function fmtTime(iso){
     if(!iso) return '';
-    const d = new Date(iso);
-    return d.toLocaleString();
+    return new Date(iso).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  }
+  function fmtDateTime(iso){
+    if(!iso) return '';
+    return new Date(iso).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
   }
   function moneyINR(x){
-    try { return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR'}).format(x||0); }
-    catch(e){ return '₹ ' + (x || 0).toFixed(2); }
+    try { return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:0}).format(x||0); }
+    catch(e){ return '₹'+(x||0); }
   }
 
-  // Request card HTML (NEW / ACCEPTED)
+  // ── Request card ──
   function cardHTML(r){
     const isFood = r.kind === "FOOD";
+
     const lines = isFood && r.lines && r.lines.length
-      ? ('<div class="request-items"><ul>' + r.lines.map(l => `<li><i class="fas fa-utensils"></i> ${l.name} × ${l.qty}</li>`).join('') + '</ul></div>')
-      : (r.note ? `<div class="request-items"><p class="mb-0"><i class="fas fa-comment"></i> ${r.note}</p></div>` : '');
+      ? `<div class="lb-req-items"><ul>${r.lines.map(l=>`<li><i class="fa-solid fa-utensils fa-xs me-1 text-blue-400"></i>${l.name} <span class="text-gray-400">×${l.qty}</span></li>`).join('')}</ul></div>`
+      : (r.note ? `<div class="lb-req-items"><p class="note mb-0"><i class="fa-solid fa-comment fa-xs me-1 text-gray-400"></i>${r.note}</p></div>` : '');
 
     const timeLine = r.status === "ACCEPTED"
-      ? `<div class="request-time"><i class="far fa-clock"></i> Created: ${fmtTime(r.created_at)} · Accepted: ${fmtTime(r.accepted_at)}</div>`
-      : `<div class="request-time"><i class="far fa-clock"></i> ${fmtTime(r.created_at)}</div>`;
+      ? `<div class="lb-req-time"><i class="fa-regular fa-clock"></i>Created ${fmtTime(r.created_at)} · Accepted ${fmtTime(r.accepted_at)}</div>`
+      : `<div class="lb-req-time"><i class="fa-regular fa-clock"></i>${fmtDateTime(r.created_at)}</div>`;
 
-    const badge = isFood 
-      ? `<span class="type-badge food"><i class="fas fa-utensils"></i> FOOD</span>`
-      : `<span class="type-badge service"><i class="fas fa-concierge-bell"></i> SERVICE</span>`;
-    
-    const total = isFood ? `<div class="request-total">${moneyINR(r.subtotal)}</div>` : '';
+    const kindBadge = isFood
+      ? `<span class="lb-kind-pill food"><i class="fa-solid fa-utensils fa-xs"></i>Food</span>`
+      : `<span class="lb-kind-pill service"><i class="fa-solid fa-concierge-bell fa-xs"></i>Service</span>`;
+
+    const total = isFood ? `<div class="lb-req-total">${moneyINR(r.subtotal)}</div>` : '';
 
     const actions = r.status === "NEW"
-      ? `<button class="btn-modern success act" data-id="${r.id}" data-a="accept"><i class="fas fa-check"></i> Accept</button>
-         <button class="btn-modern danger act" data-id="${r.id}" data-a="cancel"><i class="fas fa-times"></i> Cancel</button>`
-      : `<button class="btn-modern primary act" data-id="${r.id}" data-a="complete"><i class="fas fa-check-double"></i> Complete</button>
-         <button class="btn-modern danger act" data-id="${r.id}" data-a="cancel"><i class="fas fa-times"></i> Cancel</button>`;
+      ? `<button class="lb-btn success act" data-id="${r.id}" data-a="accept"><i class="fa-solid fa-check"></i>Accept</button>
+         <button class="lb-btn danger  act" data-id="${r.id}" data-a="cancel"><i class="fa-solid fa-xmark"></i>Cancel</button>`
+      : `<button class="lb-btn primary act" data-id="${r.id}" data-a="complete"><i class="fa-solid fa-check-double"></i>Complete</button>
+         <button class="lb-btn danger  act" data-id="${r.id}" data-a="cancel"><i class="fa-solid fa-xmark"></i>Cancel</button>`;
 
     const waList = Array.isArray(waTemplates) ? waTemplates : [];
-    const options = waList.map(t => `<option value="${t.id}">${t.label}</option>`).join('');
-    const waControls = waList.length > 0 ? `
-      <div class="wa-controls">
-        <select class="wa-select wa-template-select" data-request-id="${r.id}">
-          <option value="">Choose WhatsApp template...</option>
-          ${options}
-        </select>
-        <button type="button" class="wa-btn send-wa-btn" data-request-id="${r.id}">
-          <i class="fab fa-whatsapp"></i> Send
-        </button>
-      </div>` : '';
+    const waOpts = waList.map(t=>`<option value="${t.id}">${t.label}</option>`).join('');
+    const waBlock = waList.length
+      ? `<div class="lb-wa-row">
+           <select class="lb-wa-select wa-template-select" data-request-id="${r.id}">
+             <option value="">WhatsApp template…</option>${waOpts}
+           </select>
+           <button type="button" class="lb-btn wa send-wa-btn" data-request-id="${r.id}"><i class="fa-brands fa-whatsapp"></i></button>
+         </div>` : '';
 
-    return `<div class="request-card" data-card="${r.id}">
-      <div class="request-header">
-        <div>
-          <span class="room-badge"><i class="fas fa-door-closed"></i> Room ${r.room}</span>
-          ${badge}
+    const cardCls = r.status === "NEW" ? "new-card" : "accepted-card";
+
+    return `<div class="lb-req-card ${cardCls}" data-card="${r.id}">
+      <div class="lb-req-top">
+        <div class="lb-badges">
+          <span class="lb-room-pill"><i class="fa-solid fa-door-closed fa-xs"></i>Room ${r.room}</span>
+          ${kindBadge}
         </div>
         ${total}
       </div>
-      ${timeLine}
-      ${lines}
-      <div class="request-actions">
-        <button class="btn-modern outline view" data-id="${r.id}"><i class="fas fa-eye"></i> View</button>
+      ${timeLine}${lines}
+      <div class="lb-req-actions">
+        <button class="lb-btn outline view" data-id="${r.id}"><i class="fa-regular fa-eye"></i>View</button>
         ${actions}
       </div>
-      ${waControls}
+      ${waBlock}
     </div>`;
   }
 
-  function renderLane(el, list){
-    if (!list || !list.length){
-      el.innerHTML = '<div class="empty-state"><i class="fas fa-inbox"></i><p>Nothing here yet</p></div>';
-      return;
+  function renderLane(el, list, cntEl){
+    if(cntEl) cntEl.textContent = list ? list.length : 0;
+    if(!list || !list.length){
+      el.innerHTML = '<div class="lb-empty"><div class="lb-empty-icon"><i class="fa-solid fa-inbox"></i></div><p>Nothing here yet</p></div>';
+    } else {
+      el.innerHTML = list.map(cardHTML).join('');
     }
-    el.innerHTML = list.map(cardHTML).join('');
+    // update pending stat (new + accepted)
+    const nNew  = parseInt(cntNew     ? cntNew.textContent     : 0, 10) || 0;
+    const nAcc  = parseInt(cntAccepted? cntAccepted.textContent: 0, 10) || 0;
+    if(statPending) statPending.textContent = nNew + nAcc;
   }
 
-  // Room cards
+  // ── FREE room: compact card in 3-col grid ──
+  function freePillHTML(r){
+    return `<div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;padding:8px 6px;text-align:center;">
+      <div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:5px;">R${r.number}</div>
+      <button class="ci-btn" data-room="${r.id}"
+        style="width:100%;padding:4px 0;background:#16a34a;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;">
+        ✓ Check In
+      </button>
+    </div>`;
+  }
+
+  // ── BUSY / CLEANING room card ──
   function roomCardHTML(r){
-    const guest = r.guest_name
-      ? `<div class="room-guest"><i class="fas fa-user"></i> ${r.guest_name} · <i class="fas fa-phone"></i> ${r.guest_phone || ''}</div>`
+    const guestLine = r.guest_name
+      ? `<div class="lb-room-guest"><i class="fa-solid fa-user fa-xs"></i>${r.guest_name}${r.guest_phone ? ' · '+r.guest_phone : ''}</div>`
       : '';
-    let btn = '';
 
-    if (r.status === "FREE") {
-      btn = `<button class="btn-modern primary ci-btn" data-room="${r.id}"><i class="fas fa-sign-in-alt"></i> Check-in</button>`;
-    }
-    else if (r.status === "BUSY") {
-      let waControls = "";
-      if (waTemplates && waTemplates.length) {
-        const options = waTemplates.map(t => `<option value="${t.id}">${t.label}</option>`).join('');
-        waControls = `
-          <div class="wa-controls">
-            <select class="wa-select wa-template-select-room" data-room-id="${r.id}">
-              <option value="">WhatsApp template...</option>
-              ${options}
-            </select>
-            <button type="button" class="wa-btn send-wa-room-btn" data-room-id="${r.id}">
-              <i class="fab fa-whatsapp"></i>
-            </button>
-          </div>`;
+    let actions = '';
+    if(r.status === "BUSY"){
+      let waBlock = '';
+      if(waTemplates && waTemplates.length){
+        const opts = waTemplates.map(t=>`<option value="${t.id}">${t.label}</option>`).join('');
+        waBlock = `<div class="lb-wa-row">
+          <select class="lb-wa-select wa-template-select-room" data-room-id="${r.id}">
+            <option value="">WhatsApp…</option>${opts}
+          </select>
+          <button type="button" class="lb-btn wa send-wa-room-btn" data-room-id="${r.id}"><i class="fa-brands fa-whatsapp"></i></button>
+        </div>`;
       }
-
-      btn = `
-        <div class="room-actions">
-          <button class="btn-modern outline stay-view-btn" data-room="${r.id}">
-            <i class="fas fa-eye"></i> View
-          </button>
-          <button class="btn-modern danger co-btn" data-room="${r.id}">
-            <i class="fas fa-sign-out-alt"></i> Check-out
-          </button>
-        </div>
-        ${waControls}`;
-    }
-    else if (r.status === "CLEANING") {
-      btn = `<button class="btn-modern success ready-btn" data-room="${r.id}"><i class="fas fa-check"></i> Mark Ready</button>`;
+      actions = `<div class="lb-room-actions">
+        <button class="lb-btn outline stay-view-btn" data-room="${r.id}"><i class="fa-regular fa-eye"></i>View</button>
+        <button class="lb-btn danger  co-btn"        data-room="${r.id}"><i class="fa-solid fa-right-from-bracket"></i>Out</button>
+      </div>${waBlock}`;
+    } else if(r.status === "CLEANING"){
+      actions = `<button class="lb-btn success ready-btn" data-room="${r.id}"><i class="fa-solid fa-check"></i>Ready</button>`;
     }
 
-    return `
-      <div class="room-card">
-        <div class="room-number"><i class="fas fa-door-closed"></i> Room ${r.number}</div>
-        ${guest}
-        ${btn}
-      </div>`;
+    return `<div class="lb-room-card">
+      <div class="lb-room-num"><i class="fa-solid fa-door-closed fa-xs" style="color:#6366f1;"></i> Room ${r.number}</div>
+      ${guestLine}${actions}
+    </div>`;
   }
 
-  function renderRoomLane(el, list){
-    if (!list || !list.length){
-      el.innerHTML = '<div class="empty-state"><i class="fas fa-door-open"></i><p>No rooms</p></div>';
+  function renderRoomLane(el, list, cntEl, statEl, isFree){
+    const n = list ? list.length : 0;
+    if(cntEl) cntEl.textContent = n;
+    if(statEl) statEl.textContent = n;
+    if(!n){
+      el.innerHTML = '<div class="lb-empty" style="padding:14px 8px;"><p style="font-size:11px;">None</p></div>';
       return;
     }
-    el.innerHTML = list.map(roomCardHTML).join('');
+    if(isFree){
+      el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;">${list.map(freePillHTML).join('')}</div>`;
+    } else {
+      el.innerHTML = list.map(roomCardHTML).join('');
+    }
   }
 
-  // --- Initial render using embedded JSON ---
-  const initNew = readInit('init-new');
-  const initAcc = readInit('init-acc');
-  const initFree = readInit('init-free');
-  const initBusy = readInit('init-busy');
+  // ── Initial render ──
+  const initNew   = readInit('init-new');
+  const initAcc   = readInit('init-acc');
+  const initFree  = readInit('init-free');
+  const initBusy  = readInit('init-busy');
   const initClean = readInit('init-clean');
 
-  renderLane(laneNew, initNew);
-  renderLane(laneAccepted, initAcc);
-  renderRoomLane(laneFree, initFree);
-  renderRoomLane(laneBusy, initBusy);
-  renderRoomLane(laneCleaning, initClean);
+  renderLane(laneNew,      initNew,   cntNew);
+  renderLane(laneAccepted, initAcc,   cntAccepted);
+  renderRoomLane(laneFree,     initFree,  cntFree,  statFree, true);
+  renderRoomLane(laneBusy,     initBusy,  cntBusy,  statBusy, false);
+  renderRoomLane(laneCleaning, initClean, cntClean, null,     false);
 
-  // baseline for “already known” NEW requests
-  seenNew = new Set(initNew.map(r => r.id));
+  seenNew = new Set(initNew.map(r=>r.id));
 
-  // --- Polling fallback ---
+  // ── Polling ──
   async function poll(){
     try{
-      const res = await fetch("{% url 'live_poll' %}", { credentials: "same-origin" });
+      const res  = await fetch("{% url 'live_poll' %}", {credentials:"same-origin"});
       const data = await res.json();
 
-      const incomingIds = new Set(data.new.map(r => r.id));
+      const incomingIds = new Set(data.new.map(r=>r.id));
       let play = false;
-      for (const id of incomingIds){
-        if (!seenNew.has(id)){ play = true; break; }
-      }
+      for(const id of incomingIds){ if(!seenNew.has(id)){play=true;break;} }
 
-      renderLane(laneNew, data.new);
-      renderLane(laneAccepted, data.accepted);
+      renderLane(laneNew,      data.new,      cntNew);
+      renderLane(laneAccepted, data.accepted, cntAccepted);
       countCompleted.textContent = data.counts.completed_today;
       countCancelled.textContent = data.counts.cancelled_today;
       seenNew = incomingIds;
-      if (play){
-        try{
-          snd.currentTime = 0;
-          const p = snd.play();
-          if (p && p.catch) p.catch(()=>{});
-        }catch(e){}
-      }
+      if(play){ try{ snd.currentTime=0; const p=snd.play(); if(p&&p.catch)p.catch(()=>{}); }catch(e){} }
 
-      renderRoomLane(laneFree, data.rooms.free);
-      renderRoomLane(laneBusy, data.rooms.busy);
-      renderRoomLane(laneCleaning, data.rooms.cleaning);
-
-    }catch(e){
-      // ignore
-    }
+      renderRoomLane(laneFree,     data.rooms.free,     cntFree,  statFree, true);
+      renderRoomLane(laneBusy,     data.rooms.busy,     cntBusy,  statBusy, false);
+      renderRoomLane(laneCleaning, data.rooms.cleaning, cntClean, null,     false);
+    }catch(e){}
   }
 
-  // --- WebSocket primary updates ---
+  // ── WebSocket ──
   function setupSocket(){
-    const scheme = window.location.protocol === "https:" ? "wss" : "ws";
-    const wsUrl = scheme + "://" + window.location.host + "/ws/portal/live/";
-    const socket = new WebSocket(wsUrl);
-
-    socket.onopen = function(){
-      console.log("[WS] Connected OK:", wsUrl);
-    };
-
+    const scheme = location.protocol==="https:"?"wss":"ws";
+    const socket = new WebSocket(scheme+"://"+location.host+"/ws/portal/live/");
     socket.onmessage = function(event){
       let payload;
-      try { payload = JSON.parse(event.data); } catch(e){ return; }
-      if (!payload || payload.type !== "board_state") return;
-      const data = payload.data || {};
+      try{payload=JSON.parse(event.data);}catch(e){return;}
+      if(!payload||payload.type!=="board_state") return;
+      const data = payload.data||{};
 
-      const newList = data.new || [];
-      const incomingIds = new Set(newList.map(r => r.id));
-      let play = false;
-      for (const id of incomingIds){
-        if (!seenNew.has(id)){ play = true; break; }
+      const newList = data.new||[];
+      const incomingIds = new Set(newList.map(r=>r.id));
+      let play=false;
+      for(const id of incomingIds){if(!seenNew.has(id)){play=true;break;}}
+
+      renderLane(laneNew,      newList,         cntNew);
+      renderLane(laneAccepted, data.accepted||[], cntAccepted);
+
+      if(data.counts){
+        if(data.counts.completed_today!==undefined) countCompleted.textContent=data.counts.completed_today;
+        if(data.counts.cancelled_today!==undefined) countCancelled.textContent=data.counts.cancelled_today;
       }
-
-      renderLane(laneNew, newList);
-      renderLane(laneAccepted, data.accepted || []);
-
-      if (data.counts){
-        if (typeof data.counts.completed_today !== "undefined") {
-          countCompleted.textContent = data.counts.completed_today;
-        }
-        if (typeof data.counts.cancelled_today !== "undefined") {
-          countCancelled.textContent = data.counts.cancelled_today;
-        }
+      if(data.rooms){
+        renderRoomLane(laneFree,     data.rooms.free||[],     cntFree,  statFree, true);
+        renderRoomLane(laneBusy,     data.rooms.busy||[],     cntBusy,  statBusy, false);
+        renderRoomLane(laneCleaning, data.rooms.cleaning||[], cntClean, null,     false);
       }
-
-      if (data.rooms){
-        renderRoomLane(laneFree, data.rooms.free || []);
-        renderRoomLane(laneBusy, data.rooms.busy || []);
-        renderRoomLane(laneCleaning, data.rooms.cleaning || []);
-      }
-
-      seenNew = incomingIds;
-      if (play){
-        try{
-          snd.currentTime = 0;
-          const p = snd.play();
-          if (p && p.catch) p.catch(()=>{});
-        }catch(e){}
-      }
+      seenNew=incomingIds;
+      if(play){try{snd.currentTime=0;const p=snd.play();if(p&&p.catch)p.catch(()=>{});}catch(e){}}
     };
-
-    socket.onclose = function(evt){
-      console.log("[WS] Closed:", evt);
-    };
-
-    socket.onerror = function(evt){
-      console.log("[WS] Error:", evt);
-    };
+    socket.onclose=()=>console.log("[WS] Closed");
+    socket.onerror=()=>console.log("[WS] Error");
   }
 
-  // request actions: CSRF helper
+  // ── CSRF ──
   function getCookie(name){
     const m=document.cookie.match(new RegExp('(^| )'+name+'=([^;]+)'));
     return m?decodeURIComponent(m[2]):null;
   }
 
-  document.addEventListener('click', async (e)=>{
+  // ── Click delegation ──
+  document.addEventListener('click', async(e)=>{
 
-    // 13.1B — Send WhatsApp button
-    if (e.target.classList.contains('send-wa-btn')) {
-      const reqId = e.target.dataset.requestId;
-      const select = document.querySelector(
-        `.wa-template-select[data-request-id="${reqId}"]`
-      );
-      if (!select || !select.value) {
-        alert("Please choose a WhatsApp template first.");
-        return;
-      }
-      const tmplId = select.value;
-      const url = `{% url 'portal_request_whatsapp' 0 %}`
-        .replace('/0/', `/${reqId}/`)
-        + `?template_id=${encodeURIComponent(tmplId)}`;
-
-      window.open(url, "_blank");
+    // WhatsApp — request
+    const waBtn = e.target.closest('.send-wa-btn');
+    if(waBtn){
+      const reqId = waBtn.dataset.requestId;
+      const sel = document.querySelector(`.wa-template-select[data-request-id="${reqId}"]`);
+      if(!sel||!sel.value){alert("Choose a WhatsApp template first.");return;}
+      window.open(`{% url 'portal_request_whatsapp' 0 %}`.replace('/0/',`/${reqId}/`)+`?template_id=${encodeURIComponent(sel.value)}`,"_blank");
       return;
     }
 
-        // 13.1C — Send WhatsApp from BUSY room card (current stay)
-    if (e.target.classList.contains('send-wa-room-btn')) {
-      const roomId = e.target.dataset.roomId;
-      const select = document.querySelector(
-        `.wa-template-select-room[data-room-id="${roomId}"]`
-      );
-      if (!select || !select.value) {
-        alert("Please choose a WhatsApp template first.");
-        return;
-      }
-      const tmplId = select.value;
-      const url = `{% url 'portal_room_whatsapp' 0 %}`
-        .replace('/0/', `/${roomId}/`)
-        + `?template_id=${encodeURIComponent(tmplId)}`;
-
-      window.open(url, "_blank");
+    // WhatsApp — room
+    const waRoomBtn = e.target.closest('.send-wa-room-btn');
+    if(waRoomBtn){
+      const roomId=waRoomBtn.dataset.roomId;
+      const sel=document.querySelector(`.wa-template-select-room[data-room-id="${roomId}"]`);
+      if(!sel||!sel.value){alert("Choose a WhatsApp template first.");return;}
+      window.open(`{% url 'portal_room_whatsapp' 0 %}`.replace('/0/',`/${roomId}/`)+`?template_id=${encodeURIComponent(sel.value)}`,"_blank");
       return;
     }
 
-
-    // A) Print slip from Stay popup (handled in loaded HTML; no JS here)
-    if (e.target.classList.contains('stay-print-btn')) {
-      return;
+    // Stay view popup (BUSY room)
+    const stayViewBtn = e.target.closest('.stay-view-btn');
+    if(stayViewBtn){
+      const roomId=stayViewBtn.dataset.room;
+      const modal=new bootstrap.Modal(document.getElementById('reqDetailModal'));
+      const body=document.getElementById('reqDetailBody');
+      body.innerHTML='<div class="text-muted small">Loading…</div>';
+      try{
+        const res=await fetch("{% url 'portal_stay_detail_popup' %}"+`?room_id=${encodeURIComponent(roomId)}`,{credentials:"same-origin"});
+        const data=await res.json();
+        body.innerHTML=data.ok?data.html:'<div class="text-danger">Could not load stay details.</div>';
+      }catch(_){body.innerHTML='<div class="text-danger">Error loading stay.</div>';}
+      modal.show();return;
     }
 
-    // B) Checkout confirm from Stay popup
-    if (e.target.classList.contains('stay-checkout-btn')) {
-      const roomId = e.target.dataset.room;
-      if (!confirm("Proceed to checkout for this stay? The room will move to CLEANING.")) return;
-
-      const res = await fetch("{% url 'portal_stay_checkout' %}", {
-        method: "POST",
-        headers: { "X-CSRFToken": getCookie('csrftoken'), "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ room_id: roomId }),
-        credentials: "same-origin"
+    // Checkout confirm from stay popup
+    const stayCoBtn = e.target.closest('.stay-checkout-btn');
+    if(stayCoBtn){
+      const roomId=stayCoBtn.dataset.room;
+      if(!confirm("Proceed to checkout?")) return;
+      const res=await fetch("{% url 'portal_stay_checkout' %}",{
+        method:"POST",
+        headers:{"X-CSRFToken":getCookie('csrftoken'),"Content-Type":"application/x-www-form-urlencoded"},
+        body:new URLSearchParams({room_id:roomId}),credentials:"same-origin"
       });
-      const data = await res.json().catch(()=>({ok:false}));
-      if (data.ok){
-        const m = bootstrap.Modal.getInstance(document.getElementById('reqDetailModal'));
-        if (m) m.hide();
-      } else {
-        alert(data.error || "Checkout failed.");
-      }
+      const data=await res.json().catch(()=>({ok:false}));
+      if(data.ok){const m=bootstrap.Modal.getInstance(document.getElementById('reqDetailModal'));if(m)m.hide();}
+      else alert(data.error||"Checkout failed.");
       return;
     }
 
-    // BUSY room — Stay "View details"
-    if (e.target.classList.contains('stay-view-btn')) {
-      const roomId = e.target.dataset.room;
-      const reqDetailModal = new bootstrap.Modal(document.getElementById('reqDetailModal'));
-      const reqDetailBody = document.getElementById('reqDetailBody');
-      reqDetailBody.innerHTML = '<div class="text-muted">Loading…</div>';
-      try {
-        const url = "{% url 'portal_stay_detail_popup' %}" + `?room_id=${encodeURIComponent(roomId)}`;
-        const res = await fetch(url, { credentials: "same-origin" });
-        const data = await res.json();
-        if (data.ok) {
-          reqDetailBody.innerHTML = data.html;
-        } else {
-          reqDetailBody.innerHTML = '<div class="text-danger">Could not load stay details.</div>';
-        }
-      } catch(_) {
-        reqDetailBody.innerHTML = '<div class="text-danger">Could not load stay details.</div>';
-      }
-      reqDetailModal.show();
-      return;
-    }
-
-    // room checkout (BUSY -> CLEANING)
-    if (e.target.classList.contains('co-btn')) {
-      const roomId = e.target.dataset.room;
-      if (!confirm("Check-out this room?")) return;
-      const res = await fetch("{% url 'portal_stay_checkout' %}", {
-        method: "POST",
-        headers: { "X-CSRFToken": getCookie('csrftoken'), "Content-Type":"application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ room_id: roomId }),
-        credentials: "same-origin"
+    // Room checkout (BUSY → CLEANING)
+    const coBtn = e.target.closest('.co-btn');
+    if(coBtn){
+      const roomId=coBtn.dataset.room;
+      if(!confirm("Check out this room?")) return;
+      const res=await fetch("{% url 'portal_stay_checkout' %}",{
+        method:"POST",
+        headers:{"X-CSRFToken":getCookie('csrftoken'),"Content-Type":"application/x-www-form-urlencoded"},
+        body:new URLSearchParams({room_id:roomId}),credentials:"same-origin"
       });
-      const data = await res.json().catch(()=>({ok:false}));
-      if (!data.ok) alert(data.error || "Could not check out.");
+      const data=await res.json().catch(()=>({ok:false}));
+      if(!data.ok) alert(data.error||"Could not check out.");
       return;
     }
 
-    // mark ready (CLEANING -> FREE)
-    if (e.target.classList.contains('ready-btn')) {
-      const roomId = e.target.dataset.room;
-      if (!confirm("Mark this room as ready (FREE)?")) return;
-      const res = await fetch("{% url 'portal_room_ready' %}", {
-        method: "POST",
-        headers: { "X-CSRFToken": getCookie('csrftoken'), "Content-Type":"application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ room_id: roomId }),
-        credentials: "same-origin"
+    // Mark room ready (CLEANING → FREE)
+    const readyBtn = e.target.closest('.ready-btn');
+    if(readyBtn){
+      const roomId=readyBtn.dataset.room;
+      if(!confirm("Mark this room as ready?")) return;
+      const res=await fetch("{% url 'portal_room_ready' %}",{
+        method:"POST",
+        headers:{"X-CSRFToken":getCookie('csrftoken'),"Content-Type":"application/x-www-form-urlencoded"},
+        body:new URLSearchParams({room_id:roomId}),credentials:"same-origin"
       });
-      const data = await res.json().catch(()=>({ok:false}));
-      if (!data.ok) alert(data.error || "Could not mark ready.");
+      const data=await res.json().catch(()=>({ok:false}));
+      if(!data.ok) alert(data.error||"Could not mark ready.");
       return;
     }
 
-    // request action NEW/ACCEPTED -> ACCEPT/COMPLETE/CANCEL
-    if (e.target.classList.contains('act')){
-      const id = e.target.dataset.id;
-      const action = e.target.dataset.a;
-      const form = new URLSearchParams({ action });
-      await fetch(`{% url 'live_action' 0 %}`.replace('/0/', `/${id}/`), {
-        method: "POST",
-        headers: { "X-CSRFToken": getCookie('csrftoken'), "Content-Type":"application/x-www-form-urlencoded" },
-        body: form,
-        credentials: "same-origin"
+    // Request actions (accept / complete / cancel)
+    const actBtn = e.target.closest('.act');
+    if(actBtn){
+      const id=actBtn.dataset.id; const action=actBtn.dataset.a;
+      await fetch(`{% url 'live_action' 0 %}`.replace('/0/',`/${id}/`),{
+        method:"POST",
+        headers:{"X-CSRFToken":getCookie('csrftoken'),"Content-Type":"application/x-www-form-urlencoded"},
+        body:new URLSearchParams({action}),credentials:"same-origin"
       });
       return;
     }
 
-    // request detail view
-    if (e.target.classList.contains('view')){
-      const id = e.target.dataset.id;
-      const reqDetailModal = new bootstrap.Modal(document.getElementById('reqDetailModal'));
-      const reqDetailBody = document.getElementById('reqDetailBody');
-      reqDetailBody.innerHTML = '<div class="text-muted">Loading…</div>';
-      const res = await fetch(`{% url 'live_detail' 0 %}`.replace('/0/', `/${id}/`), { credentials:"same-origin" });
-      const data = await res.json().catch(()=>({ok:false}));
-      if (data.ok){
-        reqDetailBody.innerHTML = data.html;
-      } else {
-        reqDetailBody.innerHTML = '<div class="text-danger">Could not load details.</div>';
-      }
-      reqDetailModal.show();
+    // View request detail
+    const viewBtn = e.target.closest('.view');
+    if(viewBtn){
+      const id=viewBtn.dataset.id;
+      const modal=new bootstrap.Modal(document.getElementById('reqDetailModal'));
+      const body=document.getElementById('reqDetailBody');
+      body.innerHTML='<div class="text-muted small">Loading…</div>';
+      const res=await fetch(`{% url 'live_detail' 0 %}`.replace('/0/',`/${id}/`),{credentials:"same-origin"});
+      const data=await res.json().catch(()=>({ok:false}));
+      body.innerHTML=data.ok?data.html:'<div class="text-danger">Could not load details.</div>';
+      modal.show();
       return;
     }
 
-    // room check-in button
-    if (e.target.classList.contains('ci-btn')){
-      const roomId = e.target.dataset.room;
-      document.getElementById('ciRoomId').value = roomId;
-      document.getElementById('ciGuest').value = '';
-      document.getElementById('ciPhone').value = '';
-      document.getElementById('ciErr').style.display = 'none';
-      const m = new bootstrap.Modal(document.getElementById('checkinModal'));
-      m.show();
+    // Check-in button
+    const ciBtn = e.target.closest('.ci-btn');
+    if(ciBtn){
+      document.getElementById('ciRoomId').value = ciBtn.dataset.room;
+      const roomNum = ciBtn.closest('.lb-room-card')?.querySelector('.lb-room-num')?.textContent?.trim() || '';
+      document.getElementById('ciRoomLabel').textContent = roomNum || 'Room —';
+      new bootstrap.Modal(document.getElementById('checkinModal')).show();
       return;
     }
-
   });
 
-  // submit check-in
-  document.getElementById('ciSubmit').addEventListener('click', async ()=>{
-    const roomId = document.getElementById('ciRoomId').value;
-    const guest  = document.getElementById('ciGuest').value.trim();
-    const phone  = document.getElementById('ciPhone').value.trim();
-    const errEl  = document.getElementById('ciErr');
-    errEl.style.display='none'; errEl.textContent='';
-
-    if (!guest || !phone){
-      errEl.textContent = "Guest name and phone required.";
-      errEl.style.display = 'block';
-      return;
-    }
-
-    const res = await fetch("{% url 'portal_stay_checkin' %}", {
-      method: "POST",
-      headers: { "X-CSRFToken": getCookie('csrftoken'), "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({ room_id: roomId, guest_name: guest, phone: phone }),
-      credentials: "same-origin"
+  // Check-in submit
+  document.getElementById('ciSubmit').addEventListener('click', async()=>{
+    const roomId=document.getElementById('ciRoomId').value;
+    const guest=document.getElementById('ciGuest').value.trim();
+    const phone=document.getElementById('ciPhone').value.trim();
+    const errEl=document.getElementById('ciErr');
+    errEl.style.display='none';
+    if(!guest||!phone){errEl.textContent="Guest name and phone are required.";errEl.style.display='block';return;}
+    const res=await fetch("{% url 'portal_stay_checkin' %}",{
+      method:"POST",
+      headers:{"X-CSRFToken":getCookie('csrftoken'),"Content-Type":"application/x-www-form-urlencoded"},
+      body:new URLSearchParams({room_id:roomId,guest_name:guest,phone}),credentials:"same-origin"
     });
-    const data = await res.json().catch(()=>({ok:false}));
-    if (data.ok){
-      const m = bootstrap.Modal.getInstance(document.getElementById('checkinModal'));
-      m.hide();
-    } else {
-      errEl.textContent = data.error || "Could not check in.";
-      errEl.style.display = 'block';
-    }
+    const data=await res.json().catch(()=>({ok:false}));
+    if(data.ok){bootstrap.Modal.getInstance(document.getElementById('checkinModal')).hide();}
+    else{errEl.textContent=data.error||"Could not check in.";errEl.style.display='block';}
   });
 
-  // Start fallback polling + WebSocket
-  setInterval(poll, 8000);
-  setupSocket();
-
-})();
-</script>
-
-<script>
-// --- Django CSRF helper for AJAX-loaded modals ---
-function getCookie(name) {
-  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-  return match ? decodeURIComponent(match[2]) : null;
-}
-
-// Attach CSRF token automatically to every form loaded dynamically
-document.addEventListener('submit', function(e) {
-  const form = e.target;
-  if (form.method.toLowerCase() === 'post' && form.action.includes('/mark-paid/')) {
-    if (!form.querySelector('input[name="csrfmiddlewaretoken"]')) {
-      const token = getCookie('csrftoken');
-      if (token) {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'csrfmiddlewaretoken';
-        input.value = token;
-        form.appendChild(input);
+  // CSRF for dynamically-loaded forms (mark-paid)
+  document.addEventListener('submit',function(e){
+    const form=e.target;
+    if(form.method.toLowerCase()==='post'&&form.action.includes('/mark-paid/')){
+      if(!form.querySelector('input[name="csrfmiddlewaretoken"]')){
+        const token=getCookie('csrftoken');
+        if(token){const inp=document.createElement('input');inp.type='hidden';inp.name='csrfmiddlewaretoken';inp.value=token;form.appendChild(inp);}
       }
     }
-  }
-}, true);
+  },true);
+
+  setInterval(poll,8000);
+  setupSocket();
+})();
+
+// ── Room tab switcher (global so onclick= works) ──
+function switchRoomTab(tab){
+  ['free','busy','cleaning'].forEach(t => {
+    const lane = document.getElementById('lane' + t.charAt(0).toUpperCase() + t.slice(1));
+    const btn  = document.getElementById('tab-' + t);
+    if(lane) lane.style.display = (t === tab) ? '' : 'none';
+    if(btn){
+      if(t === tab){
+        btn.style.background = '#6366f1'; btn.style.color = '#fff';
+      } else {
+        btn.style.background = '#f8fafc'; btn.style.color = '#64748b';
+      }
+    }
+  });
+}
 </script>
 
 {% endblock %}

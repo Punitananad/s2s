@@ -5,7 +5,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from website.forms import StaffCreateForm
-from .models import Room, HotelBillingSettings
+from .models import Room, HotelBillingSettings, Stay, Request
 from .forms import RoomForm
 from django.views.decorators.http import require_POST
 from django.conf import settings
@@ -33,7 +33,30 @@ def portal_home(request):
     # allow HOTEL_ADMIN or STAFF
     if getattr(request.user, "role", None) not in ("HOTEL_ADMIN", "STAFF", "PLATFORM_ADMIN"):
         return HttpResponseForbidden("Not allowed.")
-    return render(request, "hotelportal/portal_home.html")
+    hotel = getattr(request.user, "hotel", None)
+    ctx = {}
+    if hotel:
+        rooms        = Room.objects.filter(hotel=hotel)
+        total_rooms  = rooms.count()
+        active_rooms = rooms.filter(is_active=True).count()
+        active_stays = Stay.objects.filter(hotel=hotel, status="ACTIVE").count()
+        open_requests = Request.objects.filter(hotel=hotel, status__in=("NEW", "ACCEPTED")).count()
+        unpaid_count = Stay.objects.filter(hotel=hotel, status="CHECKED_OUT", is_paid=False).count()
+        _User = get_user_model()
+        staff_count  = _User.objects.filter(hotel=hotel, role="STAFF").count()
+
+        ctx["stats"] = {
+            "total_rooms":   total_rooms,
+            "active_rooms":  active_rooms,
+            "active_stays":  active_stays,
+            "open_requests": open_requests,
+            "unpaid_count":  unpaid_count,
+            "staff_count":   staff_count,
+            "free_rooms":    rooms.filter(status="FREE").count(),
+            "busy_rooms":    rooms.filter(status="BUSY").count(),
+            "cleaning_rooms":rooms.filter(status="CLEANING").count(),
+        }
+    return render(request, "hotelportal/portal_home.html", ctx)
 
 
 
@@ -135,6 +158,138 @@ def room_delete(request, pk):
 
 
 @login_required
+def room_generator(request):
+    """Bulk room creation: Single / Range / Floor / Custom."""
+    if not _is_portal_user(request.user):
+        return HttpResponseForbidden("Only hotel admins can generate rooms.")
+
+    hotel = request.user.hotel
+
+    if request.method != "POST":
+        return render(request, "hotelportal/room_generator.html")
+
+    method = request.POST.get("method", "single")
+    is_active = request.POST.get("is_active") == "on"
+    rooms_to_create = []   # list of {"number": str, "floor": str}
+    error = None
+
+    # ── Method 1: Single ──────────────────────────────────
+    if method == "single":
+        number = request.POST.get("number", "").strip()
+        floor  = request.POST.get("floor", "").strip()
+        if not number:
+            error = "Room number is required."
+        else:
+            rooms_to_create = [{"number": number, "floor": floor}]
+
+    # ── Method 2: Range ───────────────────────────────────
+    elif method == "range":
+        floor = request.POST.get("range_floor", "").strip()
+        try:
+            start = int(request.POST.get("range_start", ""))
+            end   = int(request.POST.get("range_end", ""))
+            if start > end:
+                error = "Start must be ≤ End."
+            elif (end - start + 1) > 500:
+                error = "Range too large — max 500 rooms at once."
+            else:
+                rooms_to_create = [
+                    {"number": str(n), "floor": floor}
+                    for n in range(start, end + 1)
+                ]
+        except (ValueError, TypeError):
+            error = "Enter valid integer start and end numbers."
+
+    # ── Method 3: Floor generator ─────────────────────────
+    elif method == "floor":
+        try:
+            floor_start     = int(request.POST.get("floor_start", ""))
+            floor_end       = int(request.POST.get("floor_end", ""))
+            rooms_per_floor = int(request.POST.get("rooms_per_floor", ""))
+            fmt             = request.POST.get("floor_format", "A")
+
+            if floor_start > floor_end:
+                error = "Floor start must be ≤ Floor end."
+            elif not (1 <= rooms_per_floor <= 99):
+                error = "Rooms per floor must be between 1 and 99."
+            elif (floor_end - floor_start + 1) * rooms_per_floor > 500:
+                error = "Too many rooms — max 500 at once."
+            else:
+                for f in range(floor_start, floor_end + 1):
+                    for r in range(1, rooms_per_floor + 1):
+                        if fmt == "A":
+                            # e.g. floor 1, room 3 → "103"
+                            number = f"{f}{r:02d}"
+                        else:
+                            # e.g. floor 1 → 'A', room 3 → "A3"
+                            letter = chr(ord("A") + (f - floor_start))
+                            number = f"{letter}{r}"
+                        rooms_to_create.append({"number": number, "floor": str(f)})
+        except (ValueError, TypeError):
+            error = "Enter valid numbers for floor range and rooms per floor."
+
+    # ── Method 4: Custom list ─────────────────────────────
+    elif method == "custom":
+        floor = request.POST.get("custom_floor", "").strip()
+        raw   = request.POST.get("custom_list", "")
+        # accept comma or newline separated
+        numbers = [
+            n.strip()
+            for n in raw.replace("\n", ",").replace(";", ",").split(",")
+            if n.strip()
+        ]
+        if not numbers:
+            error = "Enter at least one room number."
+        elif len(numbers) > 500:
+            error = "Too many rooms — max 500 at once."
+        else:
+            rooms_to_create = [{"number": n, "floor": floor} for n in numbers]
+
+    # ── Validation error ──────────────────────────────────
+    if error:
+        messages.error(request, error)
+        return render(request, "hotelportal/room_generator.html")
+
+    # ── Deduplicate within input ──────────────────────────
+    seen, unique = set(), []
+    for r in rooms_to_create:
+        if r["number"] not in seen:
+            seen.add(r["number"])
+            unique.append(r)
+
+    # ── Find already-existing rooms ───────────────────────
+    existing = set(
+        Room.objects.filter(hotel=hotel, number__in=seen)
+                    .values_list("number", flat=True)
+    )
+    to_create = [r for r in unique if r["number"] not in existing]
+    skipped   = [r["number"] for r in unique if r["number"] in existing]
+
+    if not to_create:
+        messages.warning(
+            request,
+            f"All {len(unique)} room(s) already exist — nothing created."
+            + (f" Existing: {', '.join(list(existing)[:10])}" if existing else ""),
+        )
+        return redirect("rooms_list")
+
+    # ── Bulk create inside a transaction ──────────────────
+    with transaction.atomic():
+        Room.objects.bulk_create([
+            Room(hotel=hotel, number=r["number"], floor=r["floor"], is_active=is_active)
+            for r in to_create
+        ])
+
+    msg = f"{len(to_create)} room(s) created successfully."
+    if skipped:
+        shown = ", ".join(skipped[:10])
+        extra = f" and {len(skipped) - 10} more" if len(skipped) > 10 else ""
+        msg += f"  ({len(skipped)} already existed and were skipped: {shown}{extra})"
+    messages.success(request, msg)
+    return redirect("rooms_list")
+
+
+@login_required
 def rooms_qr_sheet(request):
     # allow HOTEL_ADMIN, STAFF, PLATFORM_ADMIN to print
     if getattr(request.user, "role", None) not in ("HOTEL_ADMIN", "STAFF", "PLATFORM_ADMIN"):
@@ -144,7 +299,7 @@ def rooms_qr_sheet(request):
     context = {
         "hotel": hotel,
         "rooms": rooms,
-        "SITE_URL": settings.SITE_URL,   # 🔸 (not in basic Django, but needed for Scan2Service)
+        "SITE_URL": settings.SITE_URL.rstrip("/"),   # strip trailing slash to avoid //h/... double-slash URLs
     }
     return render(request, "hotelportal/rooms_qr_sheet.html", context)
 

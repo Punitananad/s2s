@@ -1,0 +1,143 @@
+{% extends "base_landing.html" %}
+{% load static %}
+
+{% block title %}Pricing — Scan2Service{% endblock %}
+
+{% block content %}
+
+<img class="floating-bubble-1 absolute right-0 top-0 -z-[1]" src="{% static 'images/floating-bubble-1.svg' %}" alt="" />
+<img class="floating-bubble-2 absolute left-0 top-[387px] -z-[1]" src="{% static 'images/floating-bubble-2.svg' %}" alt="" />
+<img class="floating-bubble-3 absolute right-0 top-[605px] -z-[1]" src="{% static 'images/floating-bubble-3.svg' %}" alt="" />
+
+<!-- Page Hero -->
+<section class="page-hero py-16">
+  <div class="container">
+    <div class="text-center">
+      <ul class="breadcrumb inline-flex h-8 items-center justify-center space-x-2 rounded-3xl bg-theme-light px-4 py-2">
+        <li class="leading-none text-dark">
+          <a class="inline-flex items-center text-primary" href="{% url 'home' %}">
+            <i class="fa-solid fa-house mr-1.5 text-sm"></i>
+            <span class="text-sm leading-none">Home</span>
+          </a>
+        </li>
+        <li class="leading-none text-dark">
+          <span class="text-sm leading-none">/ Pricing</span>
+        </li>
+      </ul>
+    </div>
+    <div class="page-hero-content mx-auto max-w-[768px] text-center">
+      <h1 class="mb-5 mt-8">Simple, Transparent Pricing</h1>
+      <p>One flat monthly price per hotel. No hidden fees, no per-room charges. Start free, upgrade when you're ready.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing Cards -->
+<section class="section mt-0 pt-0 pb-20">
+  <div class="container">
+    <div class="row justify-center lg:px-10">
+
+      <!-- Starter -->
+      <div class="mt-8 md:col-6 lg:col-4 lg:mt-0">
+        <div class="rounded-xl bg-white px-8 py-10 shadow-lg">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="h3">Starter</h2>
+              <p class="mt-3 text-2xl text-dark">₹999 <span class="text-base font-normal text-gray-500">/ month</span></p>
+            </div>
+            <span class="inline-flex h-16 w-16 items-center justify-center rounded-full bg-theme-light">
+              <i class="fa-solid fa-seedling text-2xl text-primary"></i>
+            </span>
+          </div>
+          <p class="mt-6">Perfect for small hotels and guesthouses getting started with digital room service.</p>
+          <div class="my-6 border-y border-border py-6">
+            <h4 class="h6">What's included:</h4>
+            <ul class="mt-4 space-y-3">
+              {% for feature in starter_features %}
+              <li class="flex items-center text-sm">
+                <svg class="mr-2.5 text-primary shrink-0" width="16" height="13" viewBox="0 0 16 13" fill="none">
+                  <path d="M2 5.42857L6.36364 10L14 2" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                {{ feature }}
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+          <a href="{% url 'signup' %}" class="btn btn-outline-primary block w-full text-center">Get Started Free</a>
+        </div>
+      </div>
+
+      <!-- Pro (highlighted) -->
+      <div class="mt-8 md:col-6 lg:col-4 lg:mt-0">
+        <div class="rounded-xl bg-primary px-8 py-10 shadow-lg text-white relative">
+          <span class="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-yellow-900 text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap">Most Popular</span>
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="h3 text-white">Pro</h2>
+              <p class="mt-3 text-2xl">₹2,499 <span class="text-base font-normal opacity-80">/ month</span></p>
+            </div>
+            <span class="inline-flex h-16 w-16 items-center justify-center rounded-full bg-white/20">
+              <i class="fa-solid fa-rocket text-2xl text-white"></i>
+            </span>
+          </div>
+          <p class="mt-6 opacity-90">For growing hotels that need more rooms, staff, and advanced reporting.</p>
+          <div class="my-6 border-y border-white/30 py-6">
+            <h4 class="h6 text-white">Everything in Starter, plus:</h4>
+            <ul class="mt-4 space-y-3">
+              {% for feature in pro_features %}
+              <li class="flex items-center text-sm text-white">
+                <svg class="mr-2.5 shrink-0" width="16" height="13" viewBox="0 0 16 13" fill="none">
+                  <path d="M2 5.42857L6.36364 10L14 2" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                {{ feature }}
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+          <a href="{% url 'signup' %}" class="btn btn-white block w-full text-center text-primary font-semibold">Start Free Trial</a>
+        </div>
+      </div>
+
+      <!-- Enterprise -->
+      <div class="mt-8 md:col-6 lg:col-4 lg:mt-0">
+        <div class="rounded-xl bg-white px-8 py-10 shadow-lg">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="h3">Enterprise</h2>
+              <p class="mt-3 text-2xl text-dark">Custom</p>
+            </div>
+            <span class="inline-flex h-16 w-16 items-center justify-center rounded-full bg-theme-light">
+              <i class="fa-solid fa-building text-2xl text-primary"></i>
+            </span>
+          </div>
+          <p class="mt-6">For hotel chains and large properties with custom requirements.</p>
+          <div class="my-6 border-y border-border py-6">
+            <h4 class="h6">Everything in Pro, plus:</h4>
+            <ul class="mt-4 space-y-3">
+              {% for feature in enterprise_features %}
+              <li class="flex items-center text-sm">
+                <svg class="mr-2.5 text-primary shrink-0" width="16" height="13" viewBox="0 0 16 13" fill="none">
+                  <path d="M2 5.42857L6.36364 10L14 2" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+                </svg>
+                {{ feature }}
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+          <a href="{% url 'contact' %}" class="btn btn-outline-primary block w-full text-center">Contact Sales</a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- FAQ note -->
+    <div class="mt-16 text-center">
+      <p class="text-gray-600">
+        All plans include a <strong>14-day free trial</strong>. No credit card required.
+        Questions? <a href="{% url 'contact' %}" class="text-primary underline">Contact us</a>.
+      </p>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

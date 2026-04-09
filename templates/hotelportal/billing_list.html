@@ -1,164 +1,219 @@
-{% extends "base.html" %}
+{% extends "base_portal.html" %}
 {% load static %}
-{% block title %}Billing — Stays{% endblock %}
+{% block title %}Billing — Scan2Service{% endblock %}
+
+{% block topbar_breadcrumb %}
+<a href="{% url 'portal_home' %}" class="hover:text-indigo-600">Portal</a>
+<span class="text-gray-300">/</span>
+<span class="font-medium text-gray-700">Billing</span>
+{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <div>
-    <h3 class="mb-1">Billing — Stays</h3>
-    <div class="small text-muted">
-      Summary of all stays with generated bills (total_due &gt; 0)
-    </div>
-  </div>
 
-  <div class="text-end small">
-    <div>Total stays: <strong>{{ total_stays }}</strong></div>
-    <div>Total billed: <strong>₹ {{ total_billed }}</strong></div>
-    <div>Total paid: <strong>₹ {{ total_paid }}</strong></div>
-    <div>Outstanding: <strong>₹ {{ total_due_out }}</strong></div>
+<!-- Page Header -->
+<div class="ds-page-header">
+  <div>
+    <h1 class="ds-page-title">Billing</h1>
+    <p class="ds-page-subtitle">Invoices and payment records for all stays</p>
   </div>
 </div>
 
-<!-- Filters -->
-<form method="get" class="card mb-3">
-  <div class="card-body row g-2 align-items-end">
-    <div class="col-6 col-md-3">
-      <label class="form-label mb-1">From date</label>
-      <input type="date" name="start" class="form-control form-control-sm" value="{{ start }}">
+<!-- Summary Stats -->
+<div class="ds-stats-grid">
+  <div class="ds-stat-card ds-stat-card-indigo">
+    <div class="ds-stat-icon ds-stat-icon-indigo">
+      <i class="fa-solid fa-bed"></i>
     </div>
-    <div class="col-6 col-md-3">
-      <label class="form-label mb-1">To date</label>
-      <input type="date" name="end" class="form-control form-control-sm" value="{{ end }}">
-    </div>
-    <div class="col-6 col-md-3">
-      <label class="form-label mb-1">Paid status</label>
-      <select name="paid" class="form-select form-select-sm">
-        <option value="">All</option>
-        <option value="paid" {% if paid == "paid" %}selected{% endif %}>Paid</option>
-        <option value="unpaid" {% if paid == "unpaid" %}selected{% endif %}>Unpaid</option>
-      </select>
-    </div>
-    <div class="col-6 col-md-3">
-      <label class="form-label mb-1">Search</label>
-      <input type="text" name="q" class="form-control form-control-sm"
-             placeholder="Guest / phone / room / invoice"
-             value="{{ q }}">
-    </div>
+    <div class="ds-stat-label">Total Stays</div>
+    <div class="ds-stat-value">{{ total_stays }}</div>
+  </div>
 
-    <div class="col-12 d-flex justify-content-end gap-2 mt-2">
-      <a href="{% url 'portal_billing_list' %}" class="btn btn-sm btn-outline-secondary">
-        Clear
-      </a>
-      <button class="btn btn-sm btn-primary">Apply</button>
+  <div class="ds-stat-card ds-stat-card-blue">
+    <div class="ds-stat-icon ds-stat-icon-blue">
+      <i class="fa-solid fa-indian-rupee-sign"></i>
+    </div>
+    <div class="ds-stat-label">Total Billed</div>
+    <div class="ds-stat-value" style="font-size:1.375rem;">₹ {{ total_billed }}</div>
+  </div>
+
+  <div class="ds-stat-card ds-stat-card-green">
+    <div class="ds-stat-icon ds-stat-icon-green">
+      <i class="fa-solid fa-circle-check"></i>
+    </div>
+    <div class="ds-stat-label">Total Paid</div>
+    <div class="ds-stat-value" style="font-size:1.375rem;">₹ {{ total_paid }}</div>
+  </div>
+
+  <div class="ds-stat-card ds-stat-card-amber">
+    <div class="ds-stat-icon ds-stat-icon-amber">
+      <i class="fa-solid fa-clock"></i>
+    </div>
+    <div class="ds-stat-label">Outstanding</div>
+    <div class="ds-stat-value" style="font-size:1.375rem;">₹ {{ total_due_out }}</div>
+  </div>
+</div>
+
+<!-- Filter Card -->
+<div class="ds-card ds-section">
+  <div class="ds-card-header">
+    <div class="ds-card-title">Filters</div>
+    <a href="{% url 'portal_billing_list' %}" class="ds-btn ds-btn-ghost ds-btn-sm">
+      <i class="fa-solid fa-xmark"></i> Clear
+    </a>
+  </div>
+  <div class="ds-card-body">
+    <form method="get">
+      <div class="ds-filter-bar">
+        <div class="ds-form-field">
+          <label class="ds-form-label">From date</label>
+          <input type="date" name="start" class="ds-input" value="{{ start }}">
+        </div>
+        <div class="ds-form-field">
+          <label class="ds-form-label">To date</label>
+          <input type="date" name="end" class="ds-input" value="{{ end }}">
+        </div>
+        <div class="ds-form-field">
+          <label class="ds-form-label">Paid status</label>
+          <select name="paid" class="ds-input">
+            <option value="">All</option>
+            <option value="paid" {% if paid == "paid" %}selected{% endif %}>Paid</option>
+            <option value="unpaid" {% if paid == "unpaid" %}selected{% endif %}>Unpaid</option>
+          </select>
+        </div>
+        <div class="ds-form-field">
+          <label class="ds-form-label">Search</label>
+          <input type="text" name="q" class="ds-input"
+                 placeholder="Guest / phone / room / invoice" value="{{ q }}">
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:1rem;">
+        <button type="submit" class="ds-btn ds-btn-primary ds-btn-sm">
+          <i class="fa-solid fa-magnifying-glass"></i> Apply Filters
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Table Card -->
+<div class="ds-card">
+  <div class="ds-card-header">
+    <div>
+      <div class="ds-card-title">Stays with Bills</div>
+      <div class="ds-card-description">{{ page_obj.paginator.count }} result{{ page_obj.paginator.count|pluralize }}</div>
     </div>
   </div>
-</form>
 
-<!-- Table -->
-<div class="card">
-  <div class="card-body p-0">
-    <div class="table-responsive">
-      <table class="table table-sm align-middle mb-0">
-        <thead class="table-light">
-          <tr>
-            <th>Invoice</th>
-            <th>Room</th>
-            <th>Guest</th>
-            <th>Phone</th>
-            <th>Created</th>
-            <th class="text-end">Total (₹)</th>
-            <th>Status</th>
-            <th>Payment</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {% if page_obj.object_list %}
-            {% for st in page_obj.object_list %}
-              <tr>
-                <td>
-                  {% if st.invoice_no %}
-                    <span class="badge text-bg-light text-dark">{{ st.invoice_no }}</span>
-                  {% else %}
-                    <span class="text-muted small">—</span>
-                  {% endif %}
-                </td>
-                <td>Room {{ st.room.number }}</td>
-                <td>{{ st.guest_name|default:"—" }}</td>
-                <td>{{ st.phone|default:"—" }}</td>
-                <td class="small">
-                  {{ st.created_at|date:"d M Y, H:i" }}
-                </td>
-                <td class="text-end fw-semibold">
-                  {{ st.total_due }}
-                </td>
-                <td>
-                  {% if st.is_paid %}
-                    <span class="badge text-bg-success">Paid</span>
-                  {% else %}
-                    <span class="badge text-bg-warning text-dark">Unpaid</span>
-                  {% endif %}
-                </td>
-                <td class="small">
-                  {% if st.payment_mode %}
-                    {{ st.payment_mode }}
-                    {% if st.paid_at %}
-                      <br><span class="text-muted">{{ st.paid_at|date:"d M, H:i" }}</span>
-                    {% endif %}
-                  {% else %}
-                    <span class="text-muted">—</span>
-                  {% endif %}
-                </td>
-                <td class="text-end">
-                  <a href="{% url 'portal_stays_history' %}?q={{ st.room.number }}" class="btn btn-sm btn-outline-secondary">
-                    Stay
-                  </a>
-                  <a href="{% url 'portal_stay_invoice' st.id %}" target="_blank"
-                     class="btn btn-sm btn-primary">
-                    Invoice
-                  </a>
-                </td>
-              </tr>
-            {% endfor %}
-          {% else %}
+  <div class="ds-table-wrap">
+    <table class="ds-table">
+      <thead>
+        <tr>
+          <th>Invoice</th>
+          <th>Room</th>
+          <th>Guest</th>
+          <th>Phone</th>
+          <th>Date</th>
+          <th class="ds-col-right">Total (₹)</th>
+          <th>Status</th>
+          <th>Payment</th>
+          <th class="ds-col-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if page_obj.object_list %}
+          {% for st in page_obj.object_list %}
             <tr>
-              <td colspan="9" class="text-center text-muted py-4">
-                No billed stays match the current filters.
+              <td>
+                {% if st.invoice_no %}
+                  <span class="ds-badge ds-badge-neutral">{{ st.invoice_no }}</span>
+                {% else %}
+                  <span class="ds-text-muted">—</span>
+                {% endif %}
+              </td>
+              <td class="ds-text-primary">Room {{ st.room.number }}</td>
+              <td class="ds-text-primary">{{ st.guest_name|default:"—" }}</td>
+              <td class="ds-text-secondary">{{ st.phone|default:"—" }}</td>
+              <td class="ds-text-muted">{{ st.created_at|date:"d M Y" }}</td>
+              <td class="ds-col-right" style="font-weight:600;color:var(--ds-text);">
+                {{ st.total_due }}
+              </td>
+              <td>
+                {% if st.is_paid %}
+                  <span class="ds-badge ds-badge-success ds-badge-dot">Paid</span>
+                {% else %}
+                  <span class="ds-badge ds-badge-warning ds-badge-dot">Unpaid</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if st.payment_mode %}
+                  <div class="ds-text-primary" style="font-weight:500;">{{ st.payment_mode }}</div>
+                  {% if st.paid_at %}
+                    <div class="ds-text-muted">{{ st.paid_at|date:"d M, H:i" }}</div>
+                  {% endif %}
+                {% else %}
+                  <span class="ds-text-muted">—</span>
+                {% endif %}
+              </td>
+              <td class="ds-cell-actions">
+                <div class="ds-table-actions">
+                  <a href="{% url 'portal_stays_history' %}?q={{ st.room.number }}"
+                     class="ds-btn ds-btn-secondary ds-btn-sm">Stay</a>
+                  <a href="{% url 'portal_stay_invoice' st.id %}" target="_blank"
+                     class="ds-btn ds-btn-primary ds-btn-sm">
+                    <i class="fa-solid fa-file-invoice"></i> Invoice
+                  </a>
+                </div>
               </td>
             </tr>
-          {% endif %}
-        </tbody>
-      </table>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="9">
+              <div class="ds-empty">
+                <i class="fa-solid fa-receipt ds-empty-icon"></i>
+                No billed stays match the current filters.
+              </div>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination Footer -->
+  <div class="ds-card-footer">
+    <span class="ds-page-info">
+      Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+    </span>
+    <div class="ds-pagination">
+      {% if page_obj.has_previous %}
+        <a class="ds-page-btn"
+           href="?page={{ page_obj.previous_page_number }}&start={{ start }}&end={{ end }}&paid={{ paid }}&q={{ q }}">
+          <i class="fa-solid fa-chevron-left fa-xs"></i>
+        </a>
+      {% else %}
+        <span class="ds-page-btn disabled"><i class="fa-solid fa-chevron-left fa-xs"></i></span>
+      {% endif %}
+
+      {% for num in page_obj.paginator.page_range %}
+        {% if num == page_obj.number %}
+          <span class="ds-page-btn active">{{ num }}</span>
+        {% elif num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+          <a class="ds-page-btn"
+             href="?page={{ num }}&start={{ start }}&end={{ end }}&paid={{ paid }}&q={{ q }}">{{ num }}</a>
+        {% endif %}
+      {% endfor %}
+
+      {% if page_obj.has_next %}
+        <a class="ds-page-btn"
+           href="?page={{ page_obj.next_page_number }}&start={{ start }}&end={{ end }}&paid={{ paid }}&q={{ q }}">
+          <i class="fa-solid fa-chevron-right fa-xs"></i>
+        </a>
+      {% else %}
+        <span class="ds-page-btn disabled"><i class="fa-solid fa-chevron-right fa-xs"></i></span>
+      {% endif %}
     </div>
   </div>
-
-  <!-- Pagination footer -->
-  <div class="card-footer py-2">
-    <nav aria-label="Billing pagination">
-      <ul class="pagination pagination-sm mb-0 justify-content-end">
-        {% if page_obj.has_previous %}
-          <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.previous_page_number }}&start={{ start }}&end={{ end }}&paid={{ paid }}&q={{ q }}">«</a>
-          </li>
-        {% else %}
-          <li class="page-item disabled"><span class="page-link">«</span></li>
-        {% endif %}
-
-        <li class="page-item disabled">
-          <span class="page-link">
-            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
-          </span>
-        </li>
-
-        {% if page_obj.has_next %}
-          <li class="page-item">
-            <a class="page-link" href="?page={{ page_obj.next_page_number }}&start={{ start }}&end={{ end }}&paid={{ paid }}&q={{ q }}">»</a>
-          </li>
-        {% else %}
-          <li class="page-item disabled"><span class="page-link">»</span></li>
-        {% endif %}
-      </ul>
-    </nav>
-  </div>
 </div>
+
 {% endblock %}
